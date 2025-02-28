@@ -189,5 +189,146 @@
     
     <script src="ggwave.js"></script>
     <script src="ggroid.js"></script>
+    
+    <!-- Diagnostic script to verify Test Sound functionality -->
+    <script>
+        window.addEventListener('load', function() {
+            // Add diagnostic button
+            const diagContainer = document.createElement('div');
+            diagContainer.style.position = 'fixed';
+            diagContainer.style.top = '10px';
+            diagContainer.style.right = '10px';
+            diagContainer.style.backgroundColor = 'rgba(0,0,0,0.7)';
+            diagContainer.style.padding = '10px';
+            diagContainer.style.borderRadius = '4px';
+            diagContainer.style.color = 'white';
+            diagContainer.style.zIndex = '9999';
+            
+            const diagTitle = document.createElement('div');
+            diagTitle.innerHTML = '<strong>Diagnostics</strong>';
+            diagContainer.appendChild(diagTitle);
+            
+            const diagButton = document.createElement('button');
+            diagButton.textContent = 'Test Sound (Direct)';
+            diagButton.style.marginTop = '10px';
+            diagButton.style.padding = '5px';
+            diagButton.style.display = 'block';
+            diagButton.style.width = '100%';
+            diagContainer.appendChild(diagButton);
+            
+            // Add log area
+            const logArea = document.createElement('div');
+            logArea.style.marginTop = '10px';
+            logArea.style.height = '150px';
+            logArea.style.width = '250px';
+            logArea.style.overflow = 'auto';
+            logArea.style.backgroundColor = 'rgba(0,0,0,0.5)';
+            logArea.style.padding = '5px';
+            logArea.style.fontFamily = 'monospace';
+            logArea.style.fontSize = '10px';
+            diagContainer.appendChild(logArea);
+            
+            document.body.appendChild(diagContainer);
+            
+            // Add log function
+            function log(message) {
+                const line = document.createElement('div');
+                line.textContent = message;
+                logArea.appendChild(line);
+                logArea.scrollTop = logArea.scrollHeight;
+            }
+            
+            // Log initial state
+            log(`Page loaded at ${new Date().toLocaleTimeString()}`);
+            
+            // Test if ggwave is loaded
+            if (typeof ggwave_factory !== 'undefined') {
+                log('ggwave_factory is defined');
+                
+                // Test if we can initialize
+                ggwave_factory().then(function(factory) {
+                    log('Factory created successfully');
+                    
+                    // Test getting default parameters
+                    try {
+                        const params = factory.getDefaultParameters();
+                        log('Default parameters retrieved');
+                        
+                        // Initialize instance
+                        try {
+                            const instance = factory.init(params);
+                            log('Instance initialized successfully');
+                            
+                            // Test encoding
+                            try {
+                                const message = 'Test';
+                                // Direct method without enum
+                                const protocol = 4; // AUDIBLE_FAST
+                                const waveform = instance.encode(
+                                    instance,
+                                    message,
+                                    protocol,
+                                    10
+                                );
+                                log(`Encoding successful: ${waveform.length} bytes`);
+                                
+                                // Log available properties
+                                const props = [];
+                                for (const prop in instance) {
+                                    props.push(prop);
+                                }
+                                log(`Instance props: ${props.join(', ')}`);
+                                
+                                // Attach our test to button
+                                diagButton.addEventListener('click', function() {
+                                    log('Direct test button clicked');
+                                    try {
+                                        // Create audio context
+                                        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                                        
+                                        // Create buffer for encoded message
+                                        const buffer = ctx.createBuffer(1, waveform.length, ctx.sampleRate);
+                                        const channelData = buffer.getChannelData(0);
+                                        for (let i = 0; i < waveform.length; i++) {
+                                            channelData[i] = waveform[i] / 32768.0;
+                                        }
+                                        
+                                        // Create source and play
+                                        const source = ctx.createBufferSource();
+                                        source.buffer = buffer;
+                                        source.connect(ctx.destination);
+                                        source.start();
+                                        log('Sound played successfully');
+                                    } catch (err) {
+                                        log(`Error playing sound: ${err.message}`);
+                                    }
+                                });
+                            } catch (err) {
+                                log(`Encoding error: ${err.message}`);
+                            }
+                        } catch (err) {
+                            log(`Init error: ${err.message}`);
+                        }
+                    } catch (err) {
+                        log(`Params error: ${err.message}`);
+                    }
+                }).catch(function(err) {
+                    log(`Factory creation error: ${err.message}`);
+                });
+            } else {
+                log('ERROR: ggwave_factory is not defined');
+            }
+            
+            // Also add event listener to the main test button
+            const testButton = document.getElementById('testButton');
+            if (testButton) {
+                testButton.addEventListener('click', function() {
+                    log('Original test button clicked');
+                });
+            } else {
+                log('Original test button not found');
+            }
+        });
+    </script>
 </body>
 </html>
