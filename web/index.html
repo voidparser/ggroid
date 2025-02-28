@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GGRoid - Star Wars Droid Messenger</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
+    <style>
+        body {
+            background-color: #0f1117;
+            color: #e2e8f0;
+        }
+        
+        .droid-gradient {
+            background: linear-gradient(135deg, #2a6496, #357ab7);
+        }
+        
+        .slider-container {
+            width: 100%;
+        }
+        
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            border-radius: 5px;
+            background: #2a3f5f;
+            outline: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #FFD700;
+            cursor: pointer;
+        }
+        
+        input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #FFD700;
+            cursor: pointer;
+        }
+        
+        .glow {
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+        }
+        
+        .float {
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.9; }
+            50% { opacity: 0.6; }
+        }
+        
+        .pulse {
+            animation: pulse 2s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center">
+    <header class="text-center py-6 w-full droid-gradient">
+        <div class="mx-auto max-w-4xl px-4">
+            <h1 class="text-3xl font-bold text-white mb-2">GGRoid</h1>
+            <p class="text-xl text-gray-100">Star Wars Droid Messenger</p>
+        </div>
+    </header>
+    
+    <main class="flex-grow w-full max-w-4xl mx-auto px-4 py-8">
+        <div class="bg-gray-800 rounded-lg shadow-lg p-6 mb-8">
+            <h2 class="text-xl font-semibold mb-4 text-gray-200">Message</h2>
+            <textarea id="messageInput" class="w-full bg-gray-700 text-gray-100 rounded-md p-4 h-32 resize-none focus:outline-none focus:ring-2 focus:ring-yellow-400" placeholder="Enter your message here...">Hello, I am R2-D2. This is a secret message.</textarea>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                <div>
+                    <h3 class="text-lg font-medium mb-3 text-gray-300">Audio Parameters</h3>
+                    
+                    <div class="mb-4">
+                        <label for="volumeSlider" class="block text-gray-400 mb-1">Volume</label>
+                        <div class="flex items-center">
+                            <input type="range" id="volumeSlider" min="0" max="1" step="0.1" value="0.5" class="slider-container">
+                            <span id="volumeValue" class="ml-3 w-10 text-gray-300">0.5</span>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="dutySlider" class="block text-gray-400 mb-1">Duty Cycle</label>
+                        <div class="flex items-center">
+                            <input type="range" id="dutySlider" min="0.3" max="0.7" step="0.05" value="0.5" class="slider-container">
+                            <span id="dutyValue" class="ml-3 w-10 text-gray-300">0.5</span>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="lfoSlider" class="block text-gray-400 mb-1">Warble Rate (Hz)</label>
+                        <div class="flex items-center">
+                            <input type="range" id="lfoSlider" min="5" max="20" step="1" value="12" class="slider-container">
+                            <span id="lfoValue" class="ml-3 w-10 text-gray-300">12</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3 class="text-lg font-medium mb-3 text-gray-300">Effect Parameters</h3>
+                    
+                    <div class="mb-4">
+                        <label for="exaggerationSlider" class="block text-gray-400 mb-1">Exaggeration</label>
+                        <div class="flex items-center">
+                            <input type="range" id="exaggerationSlider" min="0" max="1" step="0.1" value="0.6" class="slider-container">
+                            <span id="exaggerationValue" class="ml-3 w-10 text-gray-300">0.6</span>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="effectSelect" class="block text-gray-400 mb-1">Sound Effect</label>
+                        <select id="effectSelect" class="w-full bg-gray-700 text-gray-100 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-yellow-400">
+                            <option value="normal">Normal</option>
+                            <option value="blatt">Blatt</option>
+                            <option value="trill">Trill</option>
+                            <option value="whistle">Whistle</option>
+                            <option value="scream">Scream</option>
+                            <option value="happy">Happy</option>
+                            <option value="sad">Sad</option>
+                            <option value="question">Question</option>
+                            <option value="random">Random</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-400 mb-1">Personality</label>
+                        <div class="flex items-center">
+                            <input type="checkbox" id="personalityToggle" class="w-5 h-5 rounded-sm bg-gray-700 text-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-400" checked>
+                            <label for="personalityToggle" class="ml-2 text-gray-300">Add R2-D2 personality</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex flex-wrap gap-4 mt-6">
+                <button id="testButton" class="px-6 py-3 bg-gray-700 text-gray-100 rounded-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-yellow-400">Test Sound</button>
+                <button id="sendButton" class="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-yellow-400">Send Message</button>
+                <button id="saveButton" class="px-6 py-3 bg-gray-700 text-gray-100 rounded-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-yellow-400">Save as WAV</button>
+            </div>
+        </div>
+        
+        <div class="bg-gray-800 rounded-lg shadow-lg p-6 relative overflow-hidden">
+            <h2 class="text-xl font-semibold mb-4 text-gray-200">Visualization</h2>
+            
+            <div class="h-40 bg-gray-900 rounded-md relative mb-3">
+                <canvas id="audioCanvas" class="w-full h-full" width="800" height="160"></canvas>
+                
+                <div id="r2d2Container" class="absolute left-1/2 bottom-4 transform -translate-x-1/2">
+                    <svg id="r2d2" class="w-24 h-28 float" viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg">
+                        <!-- R2-D2 Body -->
+                        <circle cx="50" cy="40" r="30" fill="#e0e0e0" stroke="#333" stroke-width="2"/>
+                        <rect x="30" y="70" width="40" height="50" fill="#e0e0e0" stroke="#333" stroke-width="2" rx="5"/>
+                        
+                        <!-- Details -->
+                        <circle cx="50" cy="30" r="10" fill="#333"/>
+                        <rect x="45" y="45" width="10" height="5" fill="#333"/>
+                        <rect x="35" y="55" width="30" height="5" fill="#333"/>
+                        <rect x="40" y="80" width="5" height="10" fill="#3498db" class="pulse"/>
+                        <rect x="55" y="80" width="5" height="10" fill="#e74c3c" class="pulse"/>
+                    </svg>
+                </div>
+            </div>
+            
+            <div class="mt-6">
+                <h3 class="text-lg font-medium mb-3 text-gray-300">Received Message:</h3>
+                <div id="receivedMessage" class="bg-gray-700 p-4 rounded-md min-h-[50px] text-gray-300">No messages received yet.</div>
+            </div>
+        </div>
+    </main>
+    
+    <footer class="w-full py-6 bg-gray-900 text-center">
+        <p class="text-gray-500">GGRoid - Enhancing GGWave with Star Wars Droid Aesthetics</p>
+        <p class="text-gray-600 text-sm mt-2">Created by <a href="#" class="text-blue-400 hover:underline">Arti</a></p>
+    </footer>
+    
+    <script src="ggwave.js"></script>
+    <script src="ggroid.js"></script>
+</body>
+</html>
