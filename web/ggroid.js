@@ -261,7 +261,7 @@ async function sendMessage(message, isTest = false) {
         };
         
         // Encode message using GGWave - use direct protocol number (4 is AUDIBLE_FAST)
-        const protocol = ggwaveInstance.ProtocolId.GGWAVE_PROTOCOL_AUDIBLE_FAST;
+        const protocol = 4; // AUDIBLE_FAST protocol
         const waveform = ggwaveInstance.encode(
             ggwaveInstance,
             message,
@@ -425,7 +425,7 @@ function saveAsWav() {
         };
         
         // Encode message using GGWave - use direct protocol number (4 is AUDIBLE_FAST)
-        const protocol = ggwaveInstance.ProtocolId.GGWAVE_PROTOCOL_AUDIBLE_FAST;
+        const protocol = 4; // AUDIBLE_FAST protocol
         const waveform = ggwaveInstance.encode(
             ggwaveInstance,
             message,
