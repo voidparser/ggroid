@@ -4,6 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GGRoid - Star Wars Droid Messenger</title>
+    <script>
+        // Global error handler to debug issues
+        window.onerror = function(msg, url, lineNo, columnNo, error) {
+            console.log('ERROR CAUGHT:', msg, 'at', url, 'line', lineNo, 'column', columnNo);
+            console.log('Error object:', error);
+            // Forward to browser's default handler
+            return false;
+        };
+    </script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
     <style>
         body {
@@ -188,6 +197,37 @@
     </footer>
     
     <script src="ggwave.js"></script>
+    <!-- Patch for ggwaveInstance.ProtocolId access -->
+    <script>
+        // Create a wrapper to intercept ggwave factory and add missing ProtocolId
+        const originalGgwaveFactory = window.ggwave_factory;
+        window.ggwave_factory = async function() {
+            const factory = await originalGgwaveFactory();
+            
+            // Define the required protocol IDs
+            factory.ProtocolId = {
+                GGWAVE_PROTOCOL_AUDIBLE_FAST: 4
+            };
+            
+            // Store the original init method
+            const originalInit = factory.init;
+            
+            // Override the init method
+            factory.init = function(params) {
+                // Call the original init method
+                const instance = originalInit.call(this, params);
+                
+                // Add the ProtocolId to the instance
+                instance.ProtocolId = {
+                    GGWAVE_PROTOCOL_AUDIBLE_FAST: 4
+                };
+                
+                return instance;
+            };
+            
+            return factory;
+        };
+    </script>
     <script src="ggroid.js"></script>
     
     <!-- Diagnostic script to verify Test Sound functionality -->
@@ -249,6 +289,40 @@
                 ggwave_factory().then(function(factory) {
                     log('Factory created successfully');
                     
+                    // Add debugging tool to intercept property access
+                    window.debugAccessPath = function(obj, path) {
+                        const parts = path.split('.');
+                        let current = obj;
+                        let accessPath = '';
+                        
+                        for (let i = 0; i < parts.length; i++) {
+                            accessPath += (i > 0 ? '.' : '') + parts[i];
+                            if (current === undefined) {
+                                log(`DEBUG: ${accessPath} is undefined`);
+                                return undefined;
+                            }
+                            if (current === null) {
+                                log(`DEBUG: ${accessPath} is null`);
+                                return null;
+                            }
+                            
+                            // Log whether the property exists
+                            const propExists = parts[i] in current;
+                            log(`DEBUG: ${accessPath} ${propExists ? 'exists' : 'does not exist'}`);
+                            
+                            if (propExists) {
+                                current = current[parts[i]];
+                                log(`DEBUG: ${accessPath} = ${typeof current === 'object' ? '[object]' : current}`);
+                            } else {
+                                current = undefined;
+                                log(`DEBUG: ${accessPath} is not a property`);
+                                break;
+                            }
+                        }
+                        
+                        return current;
+                    };
+                    
                     // Test getting default parameters
                     try {
                         const params = factory.getDefaultParameters();
@@ -259,14 +333,19 @@
                             const instance = factory.init(params);
                             log('Instance initialized successfully');
                             
+                            // Check for ProtocolId
+                            log('Checking for ProtocolId property:');
+                            window.debugAccessPath(instance, 'ProtocolId');
+                            window.debugAccessPath(factory, 'ProtocolId');
+                            
                             // Test encoding
                             try {
                                 const message = 'Test';
-                                // Direct method without enum
-                                const protocol = 4; // AUDIBLE_FAST
+                                // Direct method with added ProtocolId enum
+                                log('Using ProtocolId.GGWAVE_PROTOCOL_AUDIBLE_FAST: ' + instance.ProtocolId.GGWAVE_PROTOCOL_AUDIBLE_FAST);
                                 const waveform = instance.encode(
                                     message,
-                                    protocol,
+                                    instance.ProtocolId.GGWAVE_PROTOCOL_AUDIBLE_FAST,
                                     10
                                 );
                                 log(`Encoding successful: ${waveform.length} bytes`);
@@ -323,6 +402,12 @@
             if (testButton) {
                 testButton.addEventListener('click', function() {
                     log('Original test button clicked');
+                    
+                    // Intercept errors
+                    window.addEventListener('error', function(e) {
+                        log(`ERROR: ${e.message} — ${e.filename}:${e.lineno}`);
+                        e.preventDefault();
+                    }, {once: true});
                 });
             } else {
                 log('Original test button not found');

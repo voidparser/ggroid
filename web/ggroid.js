@@ -260,11 +260,11 @@ async function sendMessage(message, isTest = false) {
             addPersonality: personalityToggle.checked
         };
         
-        // Encode message using GGWave with AUDIBLE_FAST protocol (4)
-        const protocol = 4; // AUDIBLE_FAST protocol - hardcoded since enums not exposed
+        // Encode message using GGWave with AUDIBLE_FAST protocol
+        // The ProtocolId.GGWAVE_PROTOCOL_AUDIBLE_FAST should now be available through our wrapper
         const waveform = ggwaveInstance.encode(
             message,
-            protocol,
+            ggwaveInstance.ProtocolId.GGWAVE_PROTOCOL_AUDIBLE_FAST,
             10 // Default volume, we'll adjust it later
         );
         
@@ -423,11 +423,11 @@ function saveAsWav() {
             addPersonality: personalityToggle.checked
         };
         
-        // Encode message using GGWave with AUDIBLE_FAST protocol (4)
-        const protocol = 4; // AUDIBLE_FAST protocol - hardcoded since enums not exposed
+        // Encode message using GGWave with AUDIBLE_FAST protocol
+        // The ProtocolId.GGWAVE_PROTOCOL_AUDIBLE_FAST should now be available through our wrapper
         const waveform = ggwaveInstance.encode(
             message,
-            protocol,
+            ggwaveInstance.ProtocolId.GGWAVE_PROTOCOL_AUDIBLE_FAST,
             10 // Default volume, we'll adjust it later
         );
         
