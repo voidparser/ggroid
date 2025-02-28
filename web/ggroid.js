@@ -260,8 +260,8 @@ async function sendMessage(message, isTest = false) {
             addPersonality: personalityToggle.checked
         };
         
-        // Encode message using GGWave - use direct protocol number (4 is AUDIBLE_FAST)
-        const protocol = 4; // AUDIBLE_FAST protocol
+        // Encode message using GGWave with AUDIBLE_FAST protocol (4)
+        const protocol = 4; // AUDIBLE_FAST protocol - hardcoded since enums not exposed
         const waveform = ggwaveInstance.encode(
             message,
             protocol,
@@ -423,8 +423,8 @@ function saveAsWav() {
             addPersonality: personalityToggle.checked
         };
         
-        // Encode message using GGWave - use direct protocol number (4 is AUDIBLE_FAST)
-        const protocol = 4; // AUDIBLE_FAST protocol
+        // Encode message using GGWave with AUDIBLE_FAST protocol (4)
+        const protocol = 4; // AUDIBLE_FAST protocol - hardcoded since enums not exposed
         const waveform = ggwaveInstance.encode(
             message,
             protocol,
