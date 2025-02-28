@@ -9,6 +9,27 @@ GGRoid enhances the GGWave protocol with Star Wars droid-like sound aesthetics. 
 - **Warbling Effect**: Implements a low-frequency oscillator (LFO) modulating amplitude (5–20 Hz) to replicate the "warbling" effect heard in R2-D2's speech
 - **Compatible with GGWave**: Maintains compatibility with the original GGWave protocol for data transmission
 
+## Enhanced Sound Effects
+
+GGRoid provides a variety of specialized sound effects to mimic the full range of Star Wars droid sounds:
+
+- **Blatt Sounds**: Short, percussive sounds with rapidly changing duty cycles, creating the characteristic "fart-like" noises R2-D2 makes
+- **Excited Trills**: Rapid frequency modulation producing chirping sounds that convey excitement or urgency
+- **Whistles**: High-pitched, pure tones with vibrato for expressive communication
+- **Screams**: Rising frequencies with noise components for alarmed or distressed sounds
+- **Happy Chirps**: Sequences of rising beeps that sound cheerful and positive
+- **Sad Tones**: Descending frequency patterns that convey disappointment or sadness
+- **Question Effects**: Rising intonation at the end, similar to how human voices rise when asking questions
+
+## Droid Personality
+
+GGRoid adds personality to messages through:
+
+- **Intro/Outro Sequences**: Characteristic sounds at the beginning and end of messages
+- **Character-Specific Effects**: Different sounds for uppercase letters, numbers, punctuation, etc.
+- **Context-Aware Effects**: Special handling for question marks, exclamation points, and other patterns
+- **Adjustable Exaggeration**: Control how pronounced and dramatic the droid effects are
+
 ## Implementation
 
 GGRoid is implemented as a Python wrapper around the GGWave JavaScript library, allowing it to be used in web applications that require droid-like sound aesthetics for data transmission.
