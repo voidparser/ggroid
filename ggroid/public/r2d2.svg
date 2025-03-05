@@ -1,0 +1,75 @@
+<svg viewBox="0 0 300 400" xmlns="http://www.w3.org/2000/svg">
+  <!-- Base -->
+  <g id="r2d2-body">
+    <!-- Head dome -->
+    <ellipse cx="150" cy="120" rx="90" ry="80" fill="#e0e0e0" stroke="#333" stroke-width="3"/>
+    
+    <!-- Body -->
+    <rect x="80" y="200" width="140" height="180" rx="20" ry="20" fill="#e0e0e0" stroke="#333" stroke-width="3"/>
+    
+    <!-- Neck connector -->
+    <rect x="100" y="180" width="100" height="30" fill="#e0e0e0" stroke="#333" stroke-width="2"/>
+    
+    <!-- Head details -->
+    <!-- Main eye -->
+    <circle cx="150" cy="100" r="25" fill="#333" class="main-eye"/>
+    
+    <!-- Secondary sensors -->
+    <circle cx="120" cy="85" r="10" fill="#3b82f6"/>
+    <circle cx="180" cy="85" r="10" fill="#ef4444"/>
+    
+    <!-- Head patterns -->
+    <rect x="110" y="130" width="80" height="10" rx="5" fill="#333"/>
+    <rect x="100" y="150" width="100" height="8" rx="4" fill="#333"/>
+    
+    <!-- Body details -->
+    <!-- Control panels -->
+    <rect x="105" y="220" width="90" height="40" rx="5" fill="#1f2937" stroke="#333" stroke-width="2"/>
+    
+    <!-- Buttons and lights -->
+    <circle cx="125" cy="240" r="8" fill="#3b82f6" class="light blue-light"/>
+    <circle cx="150" cy="240" r="8" fill="#fbbf24" class="light yellow-light"/>
+    <circle cx="175" cy="240" r="8" fill="#ef4444" class="light red-light"/>
+    
+    <!-- Lower body details -->
+    <rect x="105" y="280" width="90" height="30" rx="5" fill="#1f2937" stroke="#333" stroke-width="2"/>
+    
+    <!-- Indicator lights -->
+    <rect x="115" y="290" width="10" height="10" rx="2" fill="#3b82f6" class="light"/>
+    <rect x="135" y="290" width="10" height="10" rx="2" fill="#10b981" class="light"/>
+    <rect x="155" y="290" width="10" height="10" rx="2" fill="#fbbf24" class="light"/>
+    <rect x="175" y="290" width="10" height="10" rx="2" fill="#ef4444" class="light"/>
+    
+    <!-- Bottom details -->
+    <rect x="90" y="330" width="120" height="30" rx="0" fill="#d1d5db" stroke="#333" stroke-width="2"/>
+    <line x1="90" y1="345" x2="210" y2="345" stroke="#333" stroke-width="2"/>
+    
+    <!-- Wheels/Feet suggestion -->
+    <ellipse cx="100" cy="380" rx="15" ry="10" fill="#333"/>
+    <ellipse cx="150" cy="380" rx="15" ry="10" fill="#333"/>
+    <ellipse cx="200" cy="380" rx="15" ry="10" fill="#333"/>
+  </g>
+  
+  <!-- Style for animations -->
+  <style>
+    .light {
+      animation: blink 4s infinite;
+    }
+    .blue-light {
+      animation-delay: 0.5s;
+    }
+    .yellow-light {
+      animation-delay: 1s;
+    }
+    .red-light {
+      animation-delay: 1.5s;
+    }
+    .main-eye {
+      filter: drop-shadow(0 0 5px rgba(59, 130, 246, 0.8));
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 0.7; }
+      50% { opacity: 1; }
+    }
+  </style>
+</svg>
