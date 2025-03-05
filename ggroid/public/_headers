@@ -1,0 +1,8 @@
+# Headers for all routes
+/*
+  Cross-Origin-Embedder-Policy: require-corp
+  Cross-Origin-Opener-Policy: same-origin
+
+# Headers for WASM files
+/ggwave/*
+  Content-Type: application/wasm
