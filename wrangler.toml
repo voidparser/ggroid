@@ -3,4 +3,7 @@ command = "cd ggroid && npm run build"
 upload.format = "service-worker"
 
 [site]
-bucket = "./ggroid/out"
+bucket = "./ggroid/out" 
+entry-point = "ggroid"
+include = ["ggroid/out/**/*"]
+exclude = ["web/**", "web_example/**"]
