@@ -1,9 +1,10 @@
-/** @type {import('tailwindcss').Config} */
-module.exports = {
+import type { Config } from "tailwindcss";
+
+const config: Config = {
   content: [
-    './ggroid/src/pages/**/*.{js,ts,jsx,tsx,mdx}',
-    './ggroid/src/components/**/*.{js,ts,jsx,tsx,mdx}',
-    './ggroid/src/app/**/*.{js,ts,jsx,tsx,mdx}',
+    "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
     extend: {
@@ -19,5 +20,6 @@ module.exports = {
     },
   },
   plugins: [],
-}
+};
 
+export default config;

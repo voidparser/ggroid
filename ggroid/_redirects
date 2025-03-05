@@ -1,0 +1,6 @@
+# Serve the app at root path
+/* /index.html 200
+
+# Handle SPA routing
+/ggroid/* /index.html 200
+/ggraid/* /index.html 200

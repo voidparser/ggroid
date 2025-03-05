@@ -7,9 +7,31 @@ import SoundEffectSelect from './SoundEffectSelect';
 import { DroidButton } from './DroidButton';
 import VisualizerCanvas from './VisualizerCanvas';
 
+// Define types for the GGWave library
+interface GGWaveParameters {
+  sampleRateInp: number;
+  sampleRateOut: number;
+  [key: string]: any;
+}
+
+interface GGWaveFactory {
+  getDefaultParameters?: () => GGWaveParameters;
+  init: (params: GGWaveParameters) => GGWaveInstance;
+  encode?: (text: string, protocol?: string | number, volume?: string | number, ...args: any[]) => Int16Array;
+}
+
+interface GGWaveInstance {
+  encode?: (text: string, protocol?: string | number, volume?: string | number, ...args: any[]) => Int16Array;
+  [key: string]: any;
+}
+
 declare global {
   interface Window {
-    ggwave_factory: () => Promise<any>;
+    ggwave_factory: () => Promise<GGWaveFactory>;
+    ggwave?: GGWaveFactory | GGWaveInstance;
+    ggwaveInstance?: GGWaveInstance;
+    AudioContext: typeof AudioContext;
+    webkitAudioContext?: typeof AudioContext;
   }
 }
 
@@ -78,7 +100,7 @@ const GGRoidMessenger: React.FC = () => {
           resolve();
         }, 5000);
         
-        script.onload = () => {
+        script.onload = (): void => {
           clearTimeout(loadTimeout);
           
           // Check for actual factory availability after load
@@ -94,7 +116,7 @@ const GGRoidMessenger: React.FC = () => {
           }
         };
         
-        script.onerror = (e) => {
+        script.onerror = (e: Event | string): void => {
           clearTimeout(loadTimeout);
           console.error('Error loading GGWave script:', e);
           // Don't reject, try to continue with fallbacks
@@ -165,9 +187,14 @@ const GGRoidMessenger: React.FC = () => {
       
       // Create analyser for visualization if it doesn't exist
       if (!analyserRef.current && audioContextRef.current) {
-        analyserRef.current = audioContextRef.current.createAnalyser();
-        analyserRef.current.fftSize = 2048;
-        analyserRef.current.connect(audioContextRef.current.destination);
+        try {
+          analyserRef.current = audioContextRef.current.createAnalyser();
+          analyserRef.current.fftSize = 2048;
+          analyserRef.current.connect(audioContextRef.current.destination);
+        } catch (analyzerError) {
+          console.warn("Could not create analyzer node:", analyzerError);
+          // Continue without analyzer - visualization will be disabled but audio will work
+        }
       }
       
       // Only initialize GGWave if it's not already initialized
@@ -217,8 +244,12 @@ const GGRoidMessenger: React.FC = () => {
         const ggwaveFactory = await window.ggwave_factory();
         console.log('GGWave factory obtained:', ggwaveFactory);
         
-        // Set up parameters
-        const params = ggwaveFactory.getDefaultParameters();
+        // Set up parameters 
+        const params = ggwaveFactory.getDefaultParameters ? 
+          ggwaveFactory.getDefaultParameters() : 
+          { sampleRateInp: audioContextRef.current.sampleRate, sampleRateOut: audioContextRef.current.sampleRate };
+        
+        // Make sure we set these properties even if they already exist
         params.sampleRateInp = audioContextRef.current.sampleRate;
         params.sampleRateOut = audioContextRef.current.sampleRate;
         
@@ -256,13 +287,19 @@ const GGRoidMessenger: React.FC = () => {
   
   // Start visualization
   const startVisualization = () => {
-    if (!analyserRef.current || !canvasRef.current) return;
+    if (!analyserRef.current || !canvasRef.current) {
+      console.log("Visualization not available: missing analyzer or canvas");
+      return;
+    }
     
     const analyzer = analyserRef.current;
     const canvas = canvasRef.current;
     const canvasContext = canvas.getContext('2d');
     
-    if (!canvasContext) return;
+    if (!canvasContext) {
+      console.warn("Could not get canvas context for visualization");
+      return;
+    }
     
     const bufferLength = analyzer.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
@@ -335,7 +372,14 @@ const GGRoidMessenger: React.FC = () => {
   };
   
   // Apply droid effects to audio buffer
-  const applyDroidEffects = (buffer: Float32Array, settings: any) => {
+  const applyDroidEffects = (buffer: Float32Array, settings: {
+    volume: number;
+    dutyCycle: number;
+    lfoRate: number;
+    exaggeration: number;
+    effect: string;
+    addPersonality?: boolean;
+  }) => {
     if (!audioContextRef.current) return buffer;
     
     // Create a new buffer for the processed audio
@@ -385,10 +429,11 @@ const GGRoidMessenger: React.FC = () => {
         const sadLfo = 1.0 + 0.4 * settings.exaggeration * 
           Math.sin(2 * Math.PI * 3 * t);
         lfo *= sadLfo;
-      } else if (settings.effect === 'question') {
+      } else if (settings.effect === 'question' && audioContextRef.current) {
         // Increasing modulation for question
+        const sampleRate = audioContextRef.current.sampleRate || 48000;
         const questionLfo = 1.0 + 0.3 * settings.exaggeration * 
-          Math.sin(2 * Math.PI * (4 + 4 * (t / (buffer.length / audioContextRef.current.sampleRate))) * t);
+          Math.sin(2 * Math.PI * (4 + 4 * (t / (buffer.length / sampleRate))) * t);
         lfo *= questionLfo;
       }
       
@@ -529,12 +574,12 @@ const GGRoidMessenger: React.FC = () => {
         // Wait for script to load with timeout
         const scriptLoaded = await Promise.race([
           new Promise<boolean>(resolve => {
-            scriptEl.onload = () => {
+            scriptEl.onload = (): void => {
               console.log('GGWave script loaded');
               setIsScriptLoaded(true);
               resolve(true);
             };
-            scriptEl.onerror = () => {
+            scriptEl.onerror = (): void => {
               console.error('Error loading GGWave script');
               resolve(false);
             };
@@ -614,7 +659,7 @@ const GGRoidMessenger: React.FC = () => {
           console.log("GGWave factory obtained successfully. Factory structure:", Object.keys(ggwaveFactory));
           
           // Get default parameters with error handling
-          let params;
+          let params: GGWaveParameters;
           try {
             if (typeof ggwaveFactory.getDefaultParameters === 'function') {
               params = ggwaveFactory.getDefaultParameters();
@@ -636,12 +681,15 @@ const GGRoidMessenger: React.FC = () => {
           }
           
           // Set sample rates if we have a valid audio context
-          if (audioContextRef.current && audioContextRef.current.sampleRate) {
-            console.log(`Setting sample rates to ${audioContextRef.current.sampleRate}Hz`);
-            params.sampleRateInp = audioContextRef.current.sampleRate;
-            params.sampleRateOut = audioContextRef.current.sampleRate;
+          if (audioContextRef.current?.sampleRate) {
+            const sampleRate = audioContextRef.current.sampleRate;
+            console.log(`Setting sample rates to ${sampleRate}Hz`);
+            params.sampleRateInp = sampleRate;
+            params.sampleRateOut = sampleRate;
           } else {
-            console.log("Using default sample rates");
+            console.log("Using default sample rates (48000Hz)");
+            params.sampleRateInp = 48000;
+            params.sampleRateOut = 48000;
           }
           
           // Try to initialize
@@ -708,7 +756,7 @@ const GGRoidMessenger: React.FC = () => {
                     
                     // Create a wrapper around the encode function
                     const originalEncode = obj;
-                    ggwaveInstanceRef.current.encode = function(...args) {
+                    ggwaveInstanceRef.current.encode = function(...args: unknown[]) {
                       console.log(`Calling encode function at ${path} with args:`, args);
                       return originalEncode.apply(this, args);
                     };
@@ -878,8 +926,8 @@ const GGRoidMessenger: React.FC = () => {
           ggwaveInstanceRef.current?.wasm,
           
           // Global objects that might have encode
-          window.ggwave,
-          window.ggwaveInstance,
+          typeof window.ggwave !== 'undefined' ? window.ggwave : null,
+          typeof window.ggwaveInstance !== 'undefined' ? window.ggwaveInstance : null,
           
           // Last resort - try to get a fresh instance from factory
           typeof window.ggwave_factory === 'function' ? await window.ggwave_factory() : null
@@ -937,7 +985,7 @@ const GGRoidMessenger: React.FC = () => {
             console.log("Creating synthetic encode function with factory.init()");
             
             // Create our own encode function that initializes on every call
-            encodeFn = function(text, protocol, volume) {
+            encodeFn = function(text: string, protocol: string | number, volume: string | number): Int16Array {
               console.log("Using synthetic encode function");
               try {
                 const params = {
@@ -953,7 +1001,7 @@ const GGRoidMessenger: React.FC = () => {
                 }
               } catch (err) {
                 console.error("Synthetic encode function error:", err);
-                throw err;
+                throw err as Error;
               }
             };
           }
@@ -973,7 +1021,7 @@ const GGRoidMessenger: React.FC = () => {
         
         // Create a synthetic waveform generator
         ggwaveInstanceRef.current = ggwaveInstanceRef.current || {};
-        ggwaveInstanceRef.current.encode = function(text) {
+        ggwaveInstanceRef.current.encode = function(text: string, ...args: unknown[]): Int16Array {
           console.log("Using synthetic beep generator instead of GGWave");
           
           // Create a simple tone pattern based on the text
@@ -1087,7 +1135,13 @@ const GGRoidMessenger: React.FC = () => {
       }
       
       // Helper function to generate synthetic droid audio
-      function generateSyntheticAudio(text: string, audioSettings: any) {
+      function generateSyntheticAudio(text: string, audioSettings: {
+        volume?: number;
+        dutyCycle?: number;
+        lfoRate?: number;
+        exaggeration?: number;
+        effect?: string;
+      }): Int16Array {
         console.log("Generating synthetic R2-D2 audio");
         const sampleRate = audioContextRef.current?.sampleRate || 48000;
         const duration = 1.0 + text.length * 0.1;
@@ -1195,15 +1249,21 @@ const GGRoidMessenger: React.FC = () => {
       const source = audioContextRef.current.createBufferSource();
       source.buffer = buffer;
       
-      // Connect to analyser for visualization
-      source.connect(analyserRef.current);
+      // Connect to analyser for visualization if it exists
+      if (analyserRef.current) {
+        source.connect(analyserRef.current);
+      } else {
+        // If no analyser, connect directly to destination
+        source.connect(audioContextRef.current.destination);
+      }
       
       // Track playback state
       isPlayingRef.current = true;
       
-      source.onended = () => {
-        isPlayingRef.current = false;
-        r2d2AnimatedRef.current = false;
+      source.onended = (_event: Event): void => {
+        // Safe cleanup of playback state
+        if (isPlayingRef.current) isPlayingRef.current = false;
+        if (r2d2AnimatedRef.current) r2d2AnimatedRef.current = false;
       };
       
       // Start playback
@@ -1226,11 +1286,20 @@ const GGRoidMessenger: React.FC = () => {
   
   // Animate R2-D2
   const animateR2D2 = () => {
+    // Find the R2-D2 element in the DOM
     const r2d2Element = document.getElementById('r2d2');
-    if (!r2d2Element) return;
+    if (!r2d2Element) {
+      console.log("R2-D2 element not found for animation");
+      return;
+    }
     
     // Only animate if not already animated
-    if (r2d2AnimatedRef.current) return;
+    if (r2d2AnimatedRef.current === true) {
+      console.log("R2-D2 already animated, skipping");
+      return;
+    }
+    
+    // Set animation state
     r2d2AnimatedRef.current = true;
     
     // Add active classes
@@ -1286,12 +1355,12 @@ const GGRoidMessenger: React.FC = () => {
         // Wait for script to load with timeout
         const scriptLoaded = await Promise.race([
           new Promise<boolean>(resolve => {
-            scriptEl.onload = () => {
+            scriptEl.onload = (): void => {
               console.log('GGWave script loaded for WAV export');
               setIsScriptLoaded(true);
               resolve(true);
             };
-            scriptEl.onerror = () => {
+            scriptEl.onerror = (): void => {
               console.error('Error loading GGWave script for WAV export');
               resolve(false);
             };
@@ -1365,19 +1434,36 @@ const GGRoidMessenger: React.FC = () => {
           console.log("GGWave factory obtained successfully for WAV export, getting parameters...");
           
           // Get default parameters with error handling
-          let params;
+          let params: GGWaveParameters;
           try {
-            params = ggwaveFactory.getDefaultParameters();
-            console.log("Parameters obtained for WAV export:", params);
+            // Check if the method exists before calling it
+            if (typeof ggwaveFactory.getDefaultParameters === 'function') {
+              params = ggwaveFactory.getDefaultParameters();
+              console.log("Parameters obtained for WAV export:", params);
+            } else {
+              // Create default parameters if method doesn't exist
+              console.log("getDefaultParameters method not available, using defaults");
+              params = {
+                sampleRateInp: audioContextRef.current?.sampleRate || 48000,
+                sampleRateOut: audioContextRef.current?.sampleRate || 48000
+              };
+            }
           } catch (paramErr) {
             console.error("Error getting parameters for WAV export:", paramErr);
-            throw new Error("Failed to get GGWave parameters for WAV export");
+            // Create fallback parameters instead of throwing
+            params = {
+              sampleRateInp: audioContextRef.current?.sampleRate || 48000,
+              sampleRateOut: audioContextRef.current?.sampleRate || 48000
+            };
+            console.log("Using fallback parameters:", params);
           }
           
           // Set sample rates
-          console.log(`Setting sample rates to ${audioContextRef.current.sampleRate}Hz for WAV export`);
-          params.sampleRateInp = audioContextRef.current.sampleRate;
-          params.sampleRateOut = audioContextRef.current.sampleRate;
+          // Set sample rates safely with null checking
+          const sampleRate = audioContextRef.current?.sampleRate || 48000;
+          console.log(`Setting sample rates to ${sampleRate}Hz for WAV export`);
+          params.sampleRateInp = sampleRate;
+          params.sampleRateOut = sampleRate;
           
           // Multiple attempts for GGWave initialization
           let instanceAttempts = 0;
@@ -1508,8 +1594,8 @@ const GGRoidMessenger: React.FC = () => {
           ggwaveInstanceRef.current,
           ggwaveInstanceRef.current?.instance,
           ggwaveInstanceRef.current?.Module,
-          window.ggwave,
-          window.ggwaveInstance,
+          typeof window.ggwave !== 'undefined' ? window.ggwave : null,
+          typeof window.ggwaveInstance !== 'undefined' ? window.ggwaveInstance : null,
           typeof window.ggwave_factory === 'function' ? await window.ggwave_factory() : null
         ];
         
@@ -1541,7 +1627,7 @@ const GGRoidMessenger: React.FC = () => {
         console.log("Creating synthetic encode function for WAV export");
         
         // Similar to sendMessage, create a tone generator
-        encodeFn = function(text) {
+        encodeFn = function(text: string, ...args: unknown[]): Int16Array {
           console.log("Using synthetic WAV generator");
           const sampleRate = audioContextRef.current?.sampleRate || 48000;
           const duration = 1.0 + text.length * 0.1;
@@ -1646,7 +1732,12 @@ const GGRoidMessenger: React.FC = () => {
     }
     
     // Helper function to generate synthetic droid audio for WAV export
-    function generateSyntheticWavAudio(text: string, audioSettings: any) {
+    function generateSyntheticWavAudio(text: string, audioSettings: {
+      volume?: number;
+      lfoRate?: number;
+      exaggeration?: number;
+      effect?: string;
+    }): Int16Array {
       console.log("Generating synthetic R2-D2 audio for WAV export");
       const sampleRate = audioContextRef.current?.sampleRate || 48000;
       const duration = 1.0 + text.length * 0.1;
@@ -1765,7 +1856,7 @@ const GGRoidMessenger: React.FC = () => {
   };
   
   // Create WAV header
-  const createWavHeader = (dataLength: number, numChannels: number, sampleRate: number, bitsPerSample: number) => {
+  const createWavHeader = (dataLength: number, numChannels: number, sampleRate: number, bitsPerSample: number): ArrayBuffer => {
     const headerLength = 44;
     const byteRate = sampleRate * numChannels * bitsPerSample / 8;
     const blockAlign = numChannels * bitsPerSample / 8;
@@ -1795,7 +1886,7 @@ const GGRoidMessenger: React.FC = () => {
   };
   
   // Helper to write string to DataView
-  const writeString = (view: DataView, offset: number, string: string) => {
+  const writeString = (view: DataView, offset: number, string: string): void => {
     for (let i = 0; i < string.length; i++) {
       view.setUint8(offset + i, string.charCodeAt(i));
     }
