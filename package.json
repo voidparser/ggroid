@@ -1,0 +1,12 @@
+{
+  "name": "ggroid-root",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "deploy": "wrangler pages publish ggroid/out"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "wrangler": "^3.22.1"
+  }
+}
