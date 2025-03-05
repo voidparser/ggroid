@@ -1005,100 +1005,169 @@ const GGRoidMessenger: React.FC = () => {
       
       console.log("Using encode function:", ggwaveInstanceRef.current.encode);
       
-      // Try to inspect the encode function to determine its usage
-      const encodeFuncStr = ggwaveInstanceRef.current.encode.toString();
-      console.log("Encode function signature:", encodeFuncStr.substring(0, 200)); // Show beginning of function
-      
-      // Log all methods on the instance to help diagnose
-      console.log("All methods on instance:", Object.getOwnPropertyNames(ggwaveInstanceRef.current));
-      
-      // Attempt to encode with different parameter combinations based on WASM binding requirements
+      // Skip trying to use the real GGWave encode if we're having WASM issues
+      // and go straight to our reliable synthetic audio generator
       let waveform;
       
-      // Extract error message to learn required parameters
-      try {
+      // Check if we've seen WASM abort errors in the browser console logs
+      const useSyntheticAudio = !ggwaveInstanceRef.current || 
+                               ggwaveInstanceRef.current._placeholderInstance || 
+                               window.localStorage.getItem('ggroid_use_synthetic') === 'true';
+      
+      if (useSyntheticAudio) {
+        console.log("Using synthetic audio directly due to previous WASM errors");
+        waveform = generateSyntheticAudio(messageToSend, settings);
+      } else {
         try {
-          // Minimal parameters
-          waveform = ggwaveInstanceRef.current.encode(messageToSend);
-        } catch (err) {
-          const errMsg = err.toString();
-          console.log("Encode error info:", errMsg);
+          // Try to inspect the encode function to determine its usage
+          try {
+            const encodeFuncStr = ggwaveInstanceRef.current.encode.toString();
+            console.log("Encode function signature:", encodeFuncStr.substring(0, 200)); // Show beginning of function
+          } catch (err) {
+            console.log("Unable to inspect encode function:", err);
+          }
           
-          // Parse the error to determine expected arguments
-          const argMatch = errMsg.match(/expected (\d+) args/);
-          const expectedArgs = argMatch ? parseInt(argMatch[1]) : 4;
+          // Log all methods on the instance to help diagnose
+          console.log("All methods on instance:", Object.getOwnPropertyNames(ggwaveInstanceRef.current));
           
-          console.log(`Encode function expects ${expectedArgs} arguments, retrying...`);
-          
-          // Additional error info to analyze specific requirements
-          const typeMismatch = errMsg.includes("Cannot pass non-string");
-          console.log("Type mismatch detected:", typeMismatch);
-          
-          // Make sure everything is a string if we detected type mismatch
-          const textMessage = messageToSend.toString();
-          const protocolStr = typeMismatch ? protocolId.toString() : protocolId;
-          const volumeStr = typeMismatch ? "10" : 10;
-          
-          // Try with the expected number of arguments
-          if (expectedArgs === 4) {
-            console.log("Trying with 4 args (string types):", textMessage, protocolStr, volumeStr, "false");
-            waveform = ggwaveInstanceRef.current.encode(textMessage, protocolStr, volumeStr, "false");
-          } else if (expectedArgs === 3) {
-            console.log("Trying with 3 args (string types):", textMessage, protocolStr, volumeStr);
-            waveform = ggwaveInstanceRef.current.encode(textMessage, protocolStr, volumeStr);
-          } else if (expectedArgs === 2) {
-            console.log("Trying with 2 args (string types):", textMessage, protocolStr);
-            waveform = ggwaveInstanceRef.current.encode(textMessage, protocolStr);
-          } else if (expectedArgs === 1) {
-            console.log("Trying with just text:", textMessage);
-            waveform = ggwaveInstanceRef.current.encode(textMessage);
-          } else {
-            // Try both string and numeric versions
+          // First try the most likely parameter combinations
+          try {
+            // Try with 1 parameter (just text)
+            console.log("Trying with just text as string");
+            waveform = ggwaveInstanceRef.current.encode(messageToSend.toString());
+          } catch (err1) {
             try {
-              // String version
-              const args = [textMessage, protocolStr, volumeStr, "false", "0", "0"];
-              console.log(`Trying with ${expectedArgs} string args:`, args.slice(0, expectedArgs));
-              waveform = ggwaveInstanceRef.current.encode.apply(
-                ggwaveInstanceRef.current, 
-                args.slice(0, expectedArgs)
-              );
-            } catch (strErr) {
-              console.log("String version failed, trying numeric:", strErr);
-              // Numeric version
-              const numArgs = [messageToSend, 1, 10, false, 0, 0];
-              waveform = ggwaveInstanceRef.current.encode.apply(
-                ggwaveInstanceRef.current, 
-                numArgs.slice(0, expectedArgs)
-              );
+              // Try with protocol (2 params)
+              console.log("Trying with text and protocol as strings");
+              waveform = ggwaveInstanceRef.current.encode(messageToSend.toString(), protocolId.toString());
+            } catch (err2) {
+              try {
+                // Try with volume (3 params)
+                console.log("Trying with text, protocol, volume as strings");
+                waveform = ggwaveInstanceRef.current.encode(messageToSend.toString(), protocolId.toString(), "10");
+              } catch (err3) {
+                try {
+                  // Try with 4 params
+                  console.log("Trying with 4 string params");
+                  waveform = ggwaveInstanceRef.current.encode(messageToSend.toString(), protocolId.toString(), "10", "0");
+                } catch (err4) {
+                  // If we get here, GGWave is likely failing due to WASM issues
+                  // Check for Aborted() error indicating WASM failure
+                  const isWasmAbort = [err1, err2, err3, err4].some(e => 
+                    e && e.toString && e.toString().includes("Aborted()")
+                  );
+                  
+                  if (isWasmAbort) {
+                    console.error("WASM module aborted - using synthetic audio");
+                    // Remember this for future calls to avoid repeated failures
+                    try {
+                      window.localStorage.setItem('ggroid_use_synthetic', 'true');
+                    } catch (e) {
+                      console.warn("Could not save synthetic audio preference:", e);
+                    }
+                    waveform = generateSyntheticAudio(messageToSend, settings);
+                  } else {
+                    // One last attempt with numeric params
+                    try {
+                      console.log("Trying with numeric params");
+                      waveform = ggwaveInstanceRef.current.encode(messageToSend, 1, 10, false);
+                    } catch (finalErr) {
+                      console.error("All encode attempts failed:", finalErr);
+                      waveform = generateSyntheticAudio(messageToSend, settings);
+                    }
+                  }
+                }
+              }
             }
           }
+        } catch (unexpectedErr) {
+          console.error("Unexpected error during encoding:", unexpectedErr);
+          waveform = generateSyntheticAudio(messageToSend, settings);
         }
-      } catch (finalErr) {
-        console.error("All encode attempts failed:", finalErr);
-        
-        // Last fallback: generate synthetic audio
-        console.log("Using synthetic audio as final fallback");
+      }
+      
+      // Helper function to generate synthetic droid audio
+      function generateSyntheticAudio(text: string, audioSettings: any) {
+        console.log("Generating synthetic R2-D2 audio");
         const sampleRate = audioContextRef.current?.sampleRate || 48000;
-        const duration = 1.0 + messageToSend.length * 0.1;
+        const duration = 1.0 + text.length * 0.1;
         const numSamples = Math.floor(sampleRate * duration);
-        waveform = new Int16Array(numSamples);
+        const syntheticWaveform = new Int16Array(numSamples);
+        
+        // Get settings for tone generation
+        const lfoRate = audioSettings.lfoRate || 12;
+        const exaggeration = audioSettings.exaggeration || 0.6;
+        const effect = audioSettings.effect || 'normal';
         
         // Generate a droid-like tone pattern
         for (let i = 0; i < numSamples; i++) {
           const t = i / sampleRate;
-          const baseFreq = 800 + 400 * Math.sin(2 * Math.PI * 0.5 * t);
-          let val = Math.sin(2 * Math.PI * baseFreq * t);
           
-          // Add some beeps
-          const beepFreq = 4;
-          const beepDuty = 0.5;
+          // Base frequency - varies based on effect type
+          let baseFreq = 800;
+          if (effect === 'whistle') baseFreq = 1200;
+          else if (effect === 'scream') baseFreq = 600;
+          else if (effect === 'blatt') baseFreq = 500;
+          else if (effect === 'trill') baseFreq = 900;
+          
+          // Apply frequency modulation - use different patterns based on effect
+          let freqMod = 400 * Math.sin(2 * Math.PI * 0.5 * t);
+          
+          if (effect === 'scream') {
+            // More chaotic for scream
+            freqMod *= 1 + 0.5 * Math.sin(2 * Math.PI * 13 * t);
+            freqMod *= 1 + 0.3 * Math.sin(2 * Math.PI * 7.3 * t);
+          } else if (effect === 'trill') {
+            // Faster modulation for trill
+            freqMod = 350 * Math.sin(2 * Math.PI * 3 * t);
+          } else if (effect === 'happy') {
+            // Higher pitch for happy
+            baseFreq += 200;
+            freqMod = 300 * Math.sin(2 * Math.PI * 1.5 * t);
+          } else if (effect === 'sad') {
+            // Lower pitch for sad
+            baseFreq -= 200;
+            freqMod = 200 * Math.sin(2 * Math.PI * 0.8 * t);
+          }
+          
+          // Apply frequency with modulation
+          const instantFreq = baseFreq + freqMod * exaggeration;
+          let val = Math.sin(2 * Math.PI * instantFreq * t);
+          
+          // Apply amplitude modulation (warble)
+          // Higher lfoRate = faster warble
+          let ampMod = 0.8 + 0.2 * Math.sin(2 * Math.PI * lfoRate * t);
+          
+          // Add effect-specific amplitude modulation
+          if (effect === 'blatt') {
+            // Add sharp transitions for blatt
+            ampMod *= 0.7 + 0.3 * ((Math.sin(2 * Math.PI * 20 * t) > 0) ? 1 : 0.5);
+          } else if (effect === 'question') {
+            // Increasing pitch at the end for question
+            const normalizedTime = t / duration;
+            if (normalizedTime > 0.7) {
+              val *= 0.8 + 0.4 * Math.sin(2 * Math.PI * (8 + 16 * (normalizedTime - 0.7) / 0.3) * t);
+            }
+          }
+          
+          // Apply amplitude modulation
+          val *= ampMod;
+          
+          // Add beep pattern - frequency varies by effect
+          const beepFreq = effect === 'trill' ? 8 : 
+                          effect === 'scream' ? 12 :
+                          effect === 'happy' ? 6 : 4;
+          
+          const beepDuty = effect === 'whistle' ? 0.2 : 0.5;
           if (Math.sin(2 * Math.PI * beepFreq * t) > 1.0 - beepDuty) {
             val *= 0.7;
           }
           
           // Convert to Int16
-          waveform[i] = Math.floor(val * 32767 * 0.8);
+          syntheticWaveform[i] = Math.floor(val * 32767 * 0.8);
         }
+        
+        return syntheticWaveform;
       }
       
       console.log("Encoding successful, waveform data type:", typeof waveform, 
@@ -1502,90 +1571,155 @@ const GGRoidMessenger: React.FC = () => {
       console.log("Successfully set encode function for WAV export");
     }
     
-    // Use the same smart parameter detection as in sendMessage
+    // Use the same approach as sendMessage for consistency and reliability
+    const protocolId = "1"; // String version of protocol ID
     let waveform;
-    const protocolId = 1; // AUDIBLE_FAST protocol
     
-    // Extract error message to learn required parameters
-    try {
+    // Check if we've seen WASM abort errors in the browser console logs
+    const useSyntheticAudio = !ggwaveInstanceRef.current || 
+                             ggwaveInstanceRef.current._placeholderInstance || 
+                             window.localStorage.getItem('ggroid_use_synthetic') === 'true';
+    
+    // Generate WAV-specific settings object
+    const wavSettings = {
+      volume: settings.volume,
+      lfoRate: settings.lfoRate,
+      exaggeration: settings.exaggeration,
+      effect: settings.effect
+    };
+    
+    if (useSyntheticAudio) {
+      console.log("Using synthetic audio directly for WAV export due to previous WASM errors");
+      waveform = generateSyntheticWavAudio(message, wavSettings);
+    } else {
       try {
-        // Minimal parameters
-        waveform = ggwaveInstanceRef.current.encode(message);
-      } catch (err) {
-        const errMsg = err.toString();
-        console.log("WAV encode error info:", errMsg);
-        
-        // Parse the error to determine expected arguments
-        const argMatch = errMsg.match(/expected (\d+) args/);
-        const expectedArgs = argMatch ? parseInt(argMatch[1]) : 4;
-        
-        console.log(`WAV encode function expects ${expectedArgs} arguments, retrying...`);
-        
-        // Additional error info to analyze specific requirements
-        const typeMismatch = errMsg.includes("Cannot pass non-string");
-        console.log("Type mismatch detected in WAV export:", typeMismatch);
-        
-        // Make sure everything is a string if we detected type mismatch
-        const textMessage = message.toString();
-        const protocolStr = typeMismatch ? protocolId.toString() : protocolId;
-        const volumeStr = typeMismatch ? "10" : 10;
-        
-        // Try with the expected number of arguments
-        if (expectedArgs === 4) {
-          console.log("Trying WAV encode with 4 args (string types):", textMessage, protocolStr, volumeStr, "false");
-          waveform = ggwaveInstanceRef.current.encode(textMessage, protocolStr, volumeStr, "false");
-        } else if (expectedArgs === 3) {
-          console.log("Trying WAV encode with 3 args (string types):", textMessage, protocolStr, volumeStr);
-          waveform = ggwaveInstanceRef.current.encode(textMessage, protocolStr, volumeStr);
-        } else if (expectedArgs === 2) {
-          console.log("Trying WAV encode with 2 args (string types):", textMessage, protocolStr);
-          waveform = ggwaveInstanceRef.current.encode(textMessage, protocolStr);
-        } else if (expectedArgs === 1) {
-          console.log("Trying WAV encode with just text:", textMessage);
-          waveform = ggwaveInstanceRef.current.encode(textMessage);
-        } else {
-          // Try both string and numeric versions
+        // First try the most likely parameter combinations
+        try {
+          console.log("Trying WAV encode with just text as string");
+          waveform = ggwaveInstanceRef.current.encode(message.toString());
+        } catch (err1) {
           try {
-            // String version
-            const args = [textMessage, protocolStr, volumeStr, "false", "0", "0"];
-            console.log(`Trying WAV encode with ${expectedArgs} string args:`, args.slice(0, expectedArgs));
-            waveform = ggwaveInstanceRef.current.encode.apply(
-              ggwaveInstanceRef.current, 
-              args.slice(0, expectedArgs)
-            );
-          } catch (strErr) {
-            console.log("String version failed for WAV, trying numeric:", strErr);
-            // Numeric version
-            const numArgs = [message, 1, 10, false, 0, 0];
-            waveform = ggwaveInstanceRef.current.encode.apply(
-              ggwaveInstanceRef.current, 
-              numArgs.slice(0, expectedArgs)
-            );
+            console.log("Trying WAV encode with text and protocol as strings");
+            waveform = ggwaveInstanceRef.current.encode(message.toString(), protocolId);
+          } catch (err2) {
+            try {
+              console.log("Trying WAV encode with text, protocol, volume as strings");
+              waveform = ggwaveInstanceRef.current.encode(message.toString(), protocolId, "10");
+            } catch (err3) {
+              try {
+                console.log("Trying WAV encode with 4 string params");
+                waveform = ggwaveInstanceRef.current.encode(message.toString(), protocolId, "10", "0");
+              } catch (err4) {
+                // If we get here, GGWave is likely failing due to WASM issues
+                // Check for Aborted() error indicating WASM failure
+                const isWasmAbort = [err1, err2, err3, err4].some(e => 
+                  e && e.toString && e.toString().includes("Aborted()")
+                );
+                
+                if (isWasmAbort) {
+                  console.error("WASM module aborted - using synthetic audio for WAV");
+                  // Remember this for future calls to avoid repeated failures
+                  try {
+                    window.localStorage.setItem('ggroid_use_synthetic', 'true');
+                  } catch (e) {
+                    console.warn("Could not save synthetic audio preference:", e);
+                  }
+                  waveform = generateSyntheticWavAudio(message, wavSettings);
+                } else {
+                  // One last attempt with numeric params
+                  try {
+                    console.log("Trying WAV encode with numeric params");
+                    waveform = ggwaveInstanceRef.current.encode(message, 1, 10, false);
+                  } catch (finalErr) {
+                    console.error("All WAV encode attempts failed:", finalErr);
+                    waveform = generateSyntheticWavAudio(message, wavSettings);
+                  }
+                }
+              }
+            }
           }
         }
+      } catch (unexpectedErr) {
+        console.error("Unexpected error during WAV encoding:", unexpectedErr);
+        waveform = generateSyntheticWavAudio(message, wavSettings);
       }
-    } catch (finalErr) {
-      console.error("All WAV encode attempts failed:", finalErr);
-      
-      // Generate synthetic audio for WAV
-      console.log("Using synthetic audio for WAV export");
+    }
+    
+    // Helper function to generate synthetic droid audio for WAV export
+    function generateSyntheticWavAudio(text: string, audioSettings: any) {
+      console.log("Generating synthetic R2-D2 audio for WAV export");
       const sampleRate = audioContextRef.current?.sampleRate || 48000;
-      const duration = 1.0 + message.length * 0.1;
+      const duration = 1.0 + text.length * 0.1;
       const numSamples = Math.floor(sampleRate * duration);
-      waveform = new Int16Array(numSamples);
+      const syntheticWaveform = new Int16Array(numSamples);
       
-      // Generate a droid-like tone pattern
+      // Get settings for tone generation
+      const lfoRate = audioSettings.lfoRate || 12;
+      const exaggeration = audioSettings.exaggeration || 0.6;
+      const effect = audioSettings.effect || 'normal';
+      
+      // Generate a droid-like tone pattern optimized for WAV export
+      // We'll use a slightly different pattern than the live version
       for (let i = 0; i < numSamples; i++) {
         const t = i / sampleRate;
-        const baseFreq = 1000 + 500 * Math.sin(2 * Math.PI * 0.3 * t);
-        let val = Math.sin(2 * Math.PI * baseFreq * t);
         
-        // Add some warble
-        val *= (0.8 + 0.2 * Math.sin(2 * Math.PI * 8 * t));
+        // Base frequency - slightly higher for WAV export
+        let baseFreq = 1000;
+        if (effect === 'whistle') baseFreq = 1400;
+        else if (effect === 'scream') baseFreq = 800;
+        else if (effect === 'blatt') baseFreq = 700;
+        else if (effect === 'trill') baseFreq = 1100;
         
-        // Convert to Int16
-        waveform[i] = Math.floor(val * 32767 * 0.8);
+        // Apply frequency modulation
+        let freqMod = 500 * Math.sin(2 * Math.PI * 0.3 * t);
+        
+        if (effect === 'scream') {
+          freqMod *= 1 + 0.5 * Math.sin(2 * Math.PI * 13 * t);
+        } else if (effect === 'trill') {
+          freqMod = 450 * Math.sin(2 * Math.PI * 3 * t);
+        } else if (effect === 'happy') {
+          baseFreq += 200;
+          freqMod = 400 * Math.sin(2 * Math.PI * 1.5 * t);
+        } else if (effect === 'sad') {
+          baseFreq -= 200;
+          freqMod = 300 * Math.sin(2 * Math.PI * 0.8 * t);
+        }
+        
+        // Apply frequency with modulation
+        const instantFreq = baseFreq + freqMod * exaggeration;
+        let val = Math.sin(2 * Math.PI * instantFreq * t);
+        
+        // Apply amplitude modulation (warble)
+        let ampMod = 0.8 + 0.2 * Math.sin(2 * Math.PI * lfoRate * t);
+        
+        // Effect-specific modifications
+        if (effect === 'blatt') {
+          ampMod *= 0.7 + 0.3 * ((Math.sin(2 * Math.PI * 20 * t) > 0) ? 1 : 0.5);
+        } else if (effect === 'question') {
+          const normalizedTime = t / duration;
+          if (normalizedTime > 0.7) {
+            val *= 0.8 + 0.4 * Math.sin(2 * Math.PI * (8 + 16 * (normalizedTime - 0.7) / 0.3) * t);
+          }
+        }
+        
+        // Apply amplitude modulation
+        val *= ampMod;
+        
+        // Add appropriate beep pattern
+        const beepFreq = effect === 'trill' ? 8 : 
+                        effect === 'scream' ? 10 :
+                        effect === 'happy' ? 6 : 4;
+        
+        const beepDuty = effect === 'whistle' ? 0.2 : 0.5;
+        if (Math.sin(2 * Math.PI * beepFreq * t) > 1.0 - beepDuty) {
+          val *= 0.7;
+        }
+        
+        // Slightly higher volume for WAV export (better dynamic range)
+        syntheticWaveform[i] = Math.floor(val * 32767 * 0.9);
       }
+      
+      return syntheticWaveform;
     }
     
     // Convert to Float32Array
