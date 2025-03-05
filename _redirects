@@ -1,6 +1,7 @@
-# Redirect all traffic to the Next.js app
-/* /ggroid/out/index.html 200
+# Serve the Next.js app directly
+/* /index.html 200
 
-# Redirect specifically from web_example paths
-/web/* /ggroid/out/index.html 301
-/web_example/* /ggroid/out/index.html 301
+# Redirect old paths to root
+/web/* / 301
+/web_example/* / 301
+/ggroid/out/* / 301
