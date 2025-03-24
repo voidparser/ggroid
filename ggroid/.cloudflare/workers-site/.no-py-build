@@ -1,0 +1,2 @@
+# This file tells Cloudflare Pages to skip Python build steps
+# The GGRoid web UI is a purely JavaScript/TypeScript application

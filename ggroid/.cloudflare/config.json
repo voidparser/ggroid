@@ -1,0 +1,9 @@
+{
+  "build": {
+    "command": "npm run build:cloudflare",
+    "environment": {
+      "PYTHON_VERSION": "none",
+      "PIP_REQUIREMENTS": "none"
+    }
+  }
+}

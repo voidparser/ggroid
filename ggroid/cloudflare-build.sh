@@ -1,7 +1,12 @@
 #!/bin/bash
 set -e  # Exit immediately if a command exits with a non-zero status
 
-echo "Installing dependencies..."
+# Explicitly ignore any Python requirements
+# This disables the automatic Python environment setup
+export PYTHON_VERSION=none
+export PIP_REQUIREMENTS=none
+
+echo "Installing JavaScript dependencies..."
 npm install
 
 echo "Building for production..."
