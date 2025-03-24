@@ -1,11 +1,2 @@
-# Root path to /ggroid
-/  /ggroid/  301
-
-# Handle SPA routing within /ggroid
-/ggroid/*  /ggroid/index.html  200
-
-# Prevent infinite loops by excluding index.html from the redirect
-/ggroid/index.html  /ggroid/index.html  200
-
-# Fallback for any other path
-/*  /ggroid/index.html  200
+# Single-Page Application handling
+/*  /index.html  200
