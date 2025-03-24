@@ -2,13 +2,9 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 
-// Check if we're building for GitHub Pages (with /ggroid/ path) or Cloudflare Pages (root path)
-const isCloudflare = process.env.CLOUDFLARE_PAGES === 'true';
-const basePath = isCloudflare ? '/' : '/ggroid/';
-
 export default defineConfig({
   plugins: [react()],
-  base: basePath, // Use conditional base path
+  base: '/', // Use root path for Cloudflare Pages
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src')
@@ -27,7 +23,6 @@ export default defineConfig({
   },
   server: {
     port: 3000,
-    open: true,
-    base: '/ggroid/' // Keep the development server path
+    open: true
   }
 });

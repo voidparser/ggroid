@@ -1,11 +1,7 @@
 import GGRoidMessenger from './components/GGRoidMessenger'
 
 function App() {
-  // Helper to prefix all URLs with the base path
-  // We'll use the same fallback as in the code: default to /ggroid/ in dev and for GitHub Pages
-  // but accept the Vite-injected import.meta.env.BASE_URL for Cloudflare
-  const basePath = import.meta.env.BASE_URL;
-  console.log("Using base path:", basePath);
+  // No basePath needed for Cloudflare Pages deployment
   
   return (
     <div className="min-h-screen bg-gray-900 text-white">
@@ -34,13 +30,13 @@ function App() {
               GitHub
             </a>
             <a 
-              href={`${basePath}examples`}
+              href="/examples"
               className="hover:text-yellow-400 transition"
             >
               Examples
             </a>
             <a 
-              href={`${basePath}docs`}
+              href="/docs"
               className="hover:text-yellow-400 transition"
             >
               Documentation
