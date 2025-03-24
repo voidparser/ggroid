@@ -7,8 +7,8 @@
  */
 
 // Expected build settings:
-// - Build command: cd ggroid && npm run build
-// - Build output directory: ggroid/out
+// - Build command: npm run build:cloudflare
+// - Build output directory: dist
 // - Environment variables: none required
 
-// The content from ggroid/out should be deployed directly at the root URL.
+// The content from dist should be deployed directly at the root URL.

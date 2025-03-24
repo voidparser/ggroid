@@ -1,7 +1,4 @@
-'use client';
-
 import React, { useState, useEffect, useRef } from 'react';
-import Image from 'next/image';
 import SliderControl from './SliderControl';
 import SoundEffectSelect from './SoundEffectSelect';
 import { DroidButton } from './DroidButton';
@@ -1329,594 +1326,49 @@ const GGRoidMessenger: React.FC = () => {
       }
     }, 2000);
   };
-  
-  // Save as WAV
-  const saveAsWav = async () => {
-    // Reuse the same script loading logic from sendMessage for consistency
-    const loadGGWaveScript = async (): Promise<boolean> => {
-      if (typeof window.ggwave_factory === 'function') {
-        // Already loaded correctly
-        if (!isScriptLoaded) setIsScriptLoaded(true);
-        return true;
-      }
-      
-      console.log("GGWave factory not available for WAV export, attempting to initialize...");
-      
-      try {
-        // Remove any existing failed scripts to avoid conflicts
-        const existingScripts = document.querySelectorAll('script[src="/ggwave/ggwave.js"]');
-        existingScripts.forEach(script => script.remove());
-        
-        // Create a new script with defer
-        const scriptEl = document.createElement('script');
-        scriptEl.src = '/ggwave/ggwave.js';
-        scriptEl.defer = true;
-        
-        // Wait for script to load with timeout
-        const scriptLoaded = await Promise.race([
-          new Promise<boolean>(resolve => {
-            scriptEl.onload = (): void => {
-              console.log('GGWave script loaded for WAV export');
-              setIsScriptLoaded(true);
-              resolve(true);
-            };
-            scriptEl.onerror = (): void => {
-              console.error('Error loading GGWave script for WAV export');
-              resolve(false);
-            };
-            document.body.appendChild(scriptEl);
-          }),
-          new Promise<boolean>(resolve => setTimeout(() => {
-            console.warn('Script load timeout for WAV export');
-            resolve(false);
-          }, 5000))
-        ]);
-        
-        // Give time for the factory to initialize
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Check for factory after waiting
-        return typeof window.ggwave_factory === 'function';
-      } catch (err) {
-        console.error("Failed to load GGWave script for WAV export:", err);
-        return false;
-      }
-    };
-    
-    // Try to load script if needed
-    const scriptLoaded = await loadGGWaveScript();
-    if (!scriptLoaded) {
-      alert("Could not load the GGWave library for WAV export. Please refresh the page and try again.");
-      return;
-    }
-    
-    // Initialize audio components directly, similar to sendMessage
-    try {
-      // Step 1: Initialize AudioContext
-      if (!audioContextRef.current) {
-        console.log("Creating new AudioContext for WAV export...");
-        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-      }
-      
-      // Step 2: Resume context if needed
-      if (audioContextRef.current.state === 'suspended') {
-        console.log("Resuming suspended AudioContext for WAV export...");
-        await audioContextRef.current.resume();
-      }
-      
-      // Step 3: Create GGWave instance
-      if (!ggwaveInstanceRef.current && typeof window.ggwave_factory === 'function') {
-        console.log("Creating new GGWave instance for WAV export...");
-        try {
-          // Multiple attempts for GGWave factory
-          let ggwaveFactory = null;
-          let factoryAttempts = 0;
-          const maxFactoryAttempts = 3;
-          
-          while (!ggwaveFactory && factoryAttempts < maxFactoryAttempts) {
-            factoryAttempts++;
-            console.log(`GGWave factory attempt for WAV ${factoryAttempts}/${maxFactoryAttempts}...`);
-            
-            try {
-              ggwaveFactory = await window.ggwave_factory();
-            } catch (e) {
-              console.warn(`Factory attempt for WAV ${factoryAttempts} failed:`, e);
-              if (factoryAttempts < maxFactoryAttempts) {
-                await new Promise(resolve => setTimeout(resolve, 500));
-              }
-            }
-          }
-          
-          if (!ggwaveFactory) {
-            throw new Error("GGWave factory returned null after multiple attempts for WAV export");
-          }
-          
-          console.log("GGWave factory obtained successfully for WAV export, getting parameters...");
-          
-          // Get default parameters with error handling
-          let params: GGWaveParameters;
-          try {
-            // Check if the method exists before calling it
-            if (typeof ggwaveFactory.getDefaultParameters === 'function') {
-              params = ggwaveFactory.getDefaultParameters();
-              console.log("Parameters obtained for WAV export:", params);
-            } else {
-              // Create default parameters if method doesn't exist
-              console.log("getDefaultParameters method not available, using defaults");
-              params = {
-                sampleRateInp: audioContextRef.current?.sampleRate || 48000,
-                sampleRateOut: audioContextRef.current?.sampleRate || 48000
-              };
-            }
-          } catch (paramErr) {
-            console.error("Error getting parameters for WAV export:", paramErr);
-            // Create fallback parameters instead of throwing
-            params = {
-              sampleRateInp: audioContextRef.current?.sampleRate || 48000,
-              sampleRateOut: audioContextRef.current?.sampleRate || 48000
-            };
-            console.log("Using fallback parameters:", params);
-          }
-          
-          // Set sample rates
-          // Set sample rates safely with null checking
-          const sampleRate = audioContextRef.current?.sampleRate || 48000;
-          console.log(`Setting sample rates to ${sampleRate}Hz for WAV export`);
-          params.sampleRateInp = sampleRate;
-          params.sampleRateOut = sampleRate;
-          
-          // Multiple attempts for GGWave initialization
-          let instanceAttempts = 0;
-          const maxInstanceAttempts = 3;
-          
-          while (!ggwaveInstanceRef.current && instanceAttempts < maxInstanceAttempts) {
-            instanceAttempts++;
-            console.log(`GGWave instance initialization attempt for WAV ${instanceAttempts}/${maxInstanceAttempts}...`);
-            
-            try {
-              ggwaveInstanceRef.current = ggwaveFactory.init(params);
-              console.log("WAV export init result:", ggwaveInstanceRef.current);
-            } catch (initErr) {
-              console.warn(`Instance initialization attempt for WAV ${instanceAttempts} failed:`, initErr);
-              if (instanceAttempts < maxInstanceAttempts) {
-                await new Promise(resolve => setTimeout(resolve, 500));
-              }
-            }
-          }
-          
-          if (!ggwaveInstanceRef.current) {
-            // Try one more desperate attempt with default parameters
-            console.log("Attempting one last initialization with minimal params for WAV export...");
-            try {
-              const minimalParams = {
-                sampleRateInp: 48000,
-                sampleRateOut: 48000
-              };
-              ggwaveInstanceRef.current = ggwaveFactory.init(minimalParams);
-            } catch (finalErr) {
-              console.error("Final initialization attempt for WAV export failed:", finalErr);
-            }
-            
-            if (!ggwaveInstanceRef.current) {
-              throw new Error("GGWave instance initialization failed after multiple attempts for WAV export");
-            }
-          }
-          
-          console.log("GGWave instance created successfully for WAV export!");
-        } catch (factoryErr) {
-          console.error("Failed to create GGWave instance for WAV export:", factoryErr);
-          throw new Error("Failed to create GGWave instance for WAV export. Please try again with a different browser.");
-        }
-      }
-      
-      // Final verification
-      const componentStatus = {
-        audioContext: !!audioContextRef.current,
-        audioContextState: audioContextRef.current?.state || 'none',
-        ggwaveInstance: !!ggwaveInstanceRef.current
-      };
-      
-      console.log("WAV export component status:", componentStatus);
-      
-      if (!componentStatus.audioContext || !componentStatus.ggwaveInstance) {
-        throw new Error(`Audio system not fully initialized for WAV export. Status: ${JSON.stringify(componentStatus)}`);
-      }
-    } catch (err) {
-      console.error("Failed to initialize audio system for WAV export:", err);
-      alert('Failed to initialize audio system for WAV export. Please reload the page and try again.');
-      return;
-    }
-    
-    // Get settings from UI
-    const settings = {
-      volume,
-      dutyCycle,
-      lfoRate,
-      exaggeration,
-      effect: selectedEffect,
-      addPersonality
-    };
-    
-    // We'll need the same encode function discovery as in sendMessage
-    // Check if we need to create a real instance from our placeholder
-    if (ggwaveInstanceRef.current?._placeholderInstance || typeof ggwaveInstanceRef.current?.encode !== 'function') {
-      console.warn("No valid encode function found for WAV export, attempting to create one");
-      
-      // First, try to get a real instance from the factory
-      if (typeof window.ggwave_factory === 'function') {
-        try {
-          console.log("Creating fresh GGWave instance for WAV export");
-          const factory = await window.ggwave_factory();
-          
-          if (factory) {
-            // Try to initialize a proper instance
-            if (typeof factory.init === 'function') {
-              const params = {
-                sampleRateInp: audioContextRef.current.sampleRate || 48000,
-                sampleRateOut: audioContextRef.current.sampleRate || 48000
-              };
-              
-              try {
-                const realInstance = factory.init(params);
-                if (realInstance) {
-                  console.log("Successfully created instance for WAV export");
-                  ggwaveInstanceRef.current = realInstance;
-                }
-              } catch (initErr) {
-                console.warn("Error creating instance for WAV export:", initErr);
-              }
-            }
-            
-            // If init didn't work, try using the factory directly
-            if (!ggwaveInstanceRef.current || ggwaveInstanceRef.current._placeholderInstance) {
-              console.log("Using factory directly as instance for WAV export");
-              ggwaveInstanceRef.current = factory;
-            }
-          }
-        } catch (factoryErr) {
-          console.error("Failed to create GGWave instance for WAV export:", factoryErr);
-        }
-      }
-      
-      // Now look for an encode function
-      let encodeFn = null;
-      
-      // First check if we now have an encode function directly
-      if (typeof ggwaveInstanceRef.current?.encode === 'function') {
-        encodeFn = ggwaveInstanceRef.current.encode;
-        console.log("Found encode directly on instance for WAV");
-      } else {
-        // Try the same deep search as in sendMessage (simplified)
-        console.warn("Searching for encode function for WAV export...");
-        
-        // Try all possible objects that might have an encode function
-        const possibleObjects = [
-          ggwaveInstanceRef.current,
-          ggwaveInstanceRef.current?.instance,
-          ggwaveInstanceRef.current?.Module,
-          typeof window.ggwave !== 'undefined' ? window.ggwave : null,
-          typeof window.ggwaveInstance !== 'undefined' ? window.ggwaveInstance : null,
-          typeof window.ggwave_factory === 'function' ? await window.ggwave_factory() : null
-        ];
-        
-        for (const obj of possibleObjects) {
-          if (!obj) continue;
-          
-          if (typeof obj.encode === 'function') {
-            encodeFn = obj.encode.bind(obj);
-            console.log("Found encode on object for WAV export");
-            break;
-          }
-          
-          // Check properties one level deep
-          for (const prop of Object.getOwnPropertyNames(obj)) {
-            const propObj = obj[prop];
-            if (propObj && typeof propObj.encode === 'function') {
-              encodeFn = propObj.encode.bind(propObj);
-              console.log(`Found encode on ${prop} for WAV export`);
-              break;
-            }
-          }
-          
-          if (encodeFn) break;
-        }
-      }
-      
-      // Last resort - create a synthetic fallback
-      if (!encodeFn) {
-        console.log("Creating synthetic encode function for WAV export");
-        
-        // Similar to sendMessage, create a tone generator
-        encodeFn = function(text: string, ...args: unknown[]): Int16Array {
-          console.log("Using synthetic WAV generator");
-          const sampleRate = audioContextRef.current?.sampleRate || 48000;
-          const duration = 1.0 + text.length * 0.1;
-          const numSamples = Math.floor(sampleRate * duration);
-          const result = new Int16Array(numSamples);
-          
-          // Generate a different tone pattern for WAV export
-          for (let i = 0; i < numSamples; i++) {
-            const t = i / sampleRate;
-            const baseFreq = 1000 + 500 * Math.sin(2 * Math.PI * 0.3 * t);
-            let val = Math.sin(2 * Math.PI * baseFreq * t);
-            
-            // Add warble effect
-            val *= (0.8 + 0.2 * Math.sin(2 * Math.PI * 8 * t));
-            
-            // Convert to Int16
-            result[i] = Math.floor(val * 32767 * 0.8);
-          }
-          
-          return result;
-        };
-      }
-      
-      // Apply the encode function
-      ggwaveInstanceRef.current = ggwaveInstanceRef.current || {};
-      ggwaveInstanceRef.current.encode = encodeFn;
-      console.log("Successfully set encode function for WAV export");
-    }
-    
-    // Use the same approach as sendMessage for consistency and reliability
-    const protocolId = "1"; // String version of protocol ID
-    let waveform;
-    
-    // Check if we've seen WASM abort errors in the browser console logs
-    const useSyntheticAudio = !ggwaveInstanceRef.current || 
-                             ggwaveInstanceRef.current._placeholderInstance || 
-                             window.localStorage.getItem('ggroid_use_synthetic') === 'true';
-    
-    // Generate WAV-specific settings object
-    const wavSettings = {
-      volume: settings.volume,
-      lfoRate: settings.lfoRate,
-      exaggeration: settings.exaggeration,
-      effect: settings.effect
-    };
-    
-    if (useSyntheticAudio) {
-      console.log("Using synthetic audio directly for WAV export due to previous WASM errors");
-      waveform = generateSyntheticWavAudio(message, wavSettings);
-    } else {
-      try {
-        // First try the most likely parameter combinations
-        try {
-          console.log("Trying WAV encode with just text as string");
-          waveform = ggwaveInstanceRef.current.encode(message.toString());
-        } catch (err1) {
-          try {
-            console.log("Trying WAV encode with text and protocol as strings");
-            waveform = ggwaveInstanceRef.current.encode(message.toString(), protocolId);
-          } catch (err2) {
-            try {
-              console.log("Trying WAV encode with text, protocol, volume as strings");
-              waveform = ggwaveInstanceRef.current.encode(message.toString(), protocolId, "10");
-            } catch (err3) {
-              try {
-                console.log("Trying WAV encode with 4 string params");
-                waveform = ggwaveInstanceRef.current.encode(message.toString(), protocolId, "10", "0");
-              } catch (err4) {
-                // If we get here, GGWave is likely failing due to WASM issues
-                // Check for Aborted() error indicating WASM failure
-                const isWasmAbort = [err1, err2, err3, err4].some(e => 
-                  e && e.toString && e.toString().includes("Aborted()")
-                );
-                
-                if (isWasmAbort) {
-                  console.error("WASM module aborted - using synthetic audio for WAV");
-                  // Remember this for future calls to avoid repeated failures
-                  try {
-                    window.localStorage.setItem('ggroid_use_synthetic', 'true');
-                  } catch (e) {
-                    console.warn("Could not save synthetic audio preference:", e);
-                  }
-                  waveform = generateSyntheticWavAudio(message, wavSettings);
-                } else {
-                  // One last attempt with numeric params
-                  try {
-                    console.log("Trying WAV encode with numeric params");
-                    waveform = ggwaveInstanceRef.current.encode(message, 1, 10, false);
-                  } catch (finalErr) {
-                    console.error("All WAV encode attempts failed:", finalErr);
-                    waveform = generateSyntheticWavAudio(message, wavSettings);
-                  }
-                }
-              }
-            }
-          }
-        }
-      } catch (unexpectedErr) {
-        console.error("Unexpected error during WAV encoding:", unexpectedErr);
-        waveform = generateSyntheticWavAudio(message, wavSettings);
-      }
-    }
-    
-    // Helper function to generate synthetic droid audio for WAV export
-    function generateSyntheticWavAudio(text: string, audioSettings: {
-      volume?: number;
-      lfoRate?: number;
-      exaggeration?: number;
-      effect?: string;
-    }): Int16Array {
-      console.log("Generating synthetic R2-D2 audio for WAV export");
-      const sampleRate = audioContextRef.current?.sampleRate || 48000;
-      const duration = 1.0 + text.length * 0.1;
-      const numSamples = Math.floor(sampleRate * duration);
-      const syntheticWaveform = new Int16Array(numSamples);
-      
-      // Get settings for tone generation
-      const lfoRate = audioSettings.lfoRate || 12;
-      const exaggeration = audioSettings.exaggeration || 0.6;
-      const effect = audioSettings.effect || 'normal';
-      
-      // Generate a droid-like tone pattern optimized for WAV export
-      // We'll use a slightly different pattern than the live version
-      for (let i = 0; i < numSamples; i++) {
-        const t = i / sampleRate;
-        
-        // Base frequency - slightly higher for WAV export
-        let baseFreq = 1000;
-        if (effect === 'whistle') baseFreq = 1400;
-        else if (effect === 'scream') baseFreq = 800;
-        else if (effect === 'blatt') baseFreq = 700;
-        else if (effect === 'trill') baseFreq = 1100;
-        
-        // Apply frequency modulation
-        let freqMod = 500 * Math.sin(2 * Math.PI * 0.3 * t);
-        
-        if (effect === 'scream') {
-          freqMod *= 1 + 0.5 * Math.sin(2 * Math.PI * 13 * t);
-        } else if (effect === 'trill') {
-          freqMod = 450 * Math.sin(2 * Math.PI * 3 * t);
-        } else if (effect === 'happy') {
-          baseFreq += 200;
-          freqMod = 400 * Math.sin(2 * Math.PI * 1.5 * t);
-        } else if (effect === 'sad') {
-          baseFreq -= 200;
-          freqMod = 300 * Math.sin(2 * Math.PI * 0.8 * t);
-        }
-        
-        // Apply frequency with modulation
-        const instantFreq = baseFreq + freqMod * exaggeration;
-        let val = Math.sin(2 * Math.PI * instantFreq * t);
-        
-        // Apply amplitude modulation (warble)
-        let ampMod = 0.8 + 0.2 * Math.sin(2 * Math.PI * lfoRate * t);
-        
-        // Effect-specific modifications
-        if (effect === 'blatt') {
-          ampMod *= 0.7 + 0.3 * ((Math.sin(2 * Math.PI * 20 * t) > 0) ? 1 : 0.5);
-        } else if (effect === 'question') {
-          const normalizedTime = t / duration;
-          if (normalizedTime > 0.7) {
-            val *= 0.8 + 0.4 * Math.sin(2 * Math.PI * (8 + 16 * (normalizedTime - 0.7) / 0.3) * t);
-          }
-        }
-        
-        // Apply amplitude modulation
-        val *= ampMod;
-        
-        // Add appropriate beep pattern
-        const beepFreq = effect === 'trill' ? 8 : 
-                        effect === 'scream' ? 10 :
-                        effect === 'happy' ? 6 : 4;
-        
-        const beepDuty = effect === 'whistle' ? 0.2 : 0.5;
-        if (Math.sin(2 * Math.PI * beepFreq * t) > 1.0 - beepDuty) {
-          val *= 0.7;
-        }
-        
-        // Slightly higher volume for WAV export (better dynamic range)
-        syntheticWaveform[i] = Math.floor(val * 32767 * 0.9);
-      }
-      
-      return syntheticWaveform;
-    }
-    
-    // Convert to Float32Array
-    const floatWaveform = new Float32Array(waveform.length);
-    for (let i = 0; i < waveform.length; i++) {
-      floatWaveform[i] = waveform[i] / 32768.0; // Convert to float (-1.0 to 1.0)
-    }
-    
-    // Apply R2-D2 effects
-    let processedWaveform = applyDroidEffects(floatWaveform, settings);
-    
-    // Add personality if enabled
-    if (settings.addPersonality) {
-      processedWaveform = addDroidPersonality(processedWaveform, settings);
-    }
-    
-    // Convert to 16-bit PCM
-    const pcmData = new Int16Array(processedWaveform.length);
-    for (let i = 0; i < processedWaveform.length; i++) {
-      pcmData[i] = Math.min(1, Math.max(-1, processedWaveform[i])) * 32767;
-    }
-    
-    // Create WAV header
-    const wavHeader = createWavHeader(pcmData.length, 1, audioContextRef.current.sampleRate, 16);
-    
-    // Combine header and PCM data
-    const wavBlob = new Blob([wavHeader, pcmData], { type: 'audio/wav' });
-    
-    // Create download link
-    const url = URL.createObjectURL(wavBlob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'r2d2_message.wav';
-    a.style.display = 'none';
-    document.body.appendChild(a);
-    a.click();
-    
-    // Clean up
-    setTimeout(() => {
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }, 100);
-  };
-  
-  // Create WAV header
-  const createWavHeader = (dataLength: number, numChannels: number, sampleRate: number, bitsPerSample: number): ArrayBuffer => {
-    const headerLength = 44;
-    const byteRate = sampleRate * numChannels * bitsPerSample / 8;
-    const blockAlign = numChannels * bitsPerSample / 8;
-    const wavHeader = new ArrayBuffer(headerLength);
-    const view = new DataView(wavHeader);
-    
-    // RIFF chunk descriptor
-    writeString(view, 0, 'RIFF');
-    view.setUint32(4, 32 + dataLength * 2, true);
-    writeString(view, 8, 'WAVE');
-    
-    // "fmt " sub-chunk
-    writeString(view, 12, 'fmt ');
-    view.setUint32(16, 16, true);
-    view.setUint16(20, 1, true); // PCM format
-    view.setUint16(22, numChannels, true);
-    view.setUint32(24, sampleRate, true);
-    view.setUint32(28, byteRate, true);
-    view.setUint16(32, blockAlign, true);
-    view.setUint16(34, bitsPerSample, true);
-    
-    // "data" sub-chunk
-    writeString(view, 36, 'data');
-    view.setUint32(40, dataLength * 2, true);
-    
-    return wavHeader;
-  };
-  
-  // Helper to write string to DataView
-  const writeString = (view: DataView, offset: number, string: string): void => {
-    for (let i = 0; i < string.length; i++) {
-      view.setUint8(offset + i, string.charCodeAt(i));
-    }
-  };
-  
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-      {/* Message input and controls */}
-      <div className="lg:col-span-2 bg-gray-800 rounded-xl p-6 shadow-lg">
-        <h2 className="text-2xl font-bold text-blue-400 mb-4">Message Controls</h2>
-        
-        <div className="mb-6">
-          <label htmlFor="messageInput" className="block text-sm font-medium text-gray-300 mb-2">
-            Message to Send
-          </label>
-          <textarea
-            id="messageInput"
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            className="droid-input min-h-[120px]"
-            placeholder="Enter your message here..."
+    <div className="bg-gray-800 rounded-lg shadow-xl p-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Left Column - R2-D2 Image and Visualizer */}
+        <div className="flex flex-col items-center space-y-4">
+          <div className="relative w-48 h-48">
+            <img 
+              id="r2d2" 
+              src="/r2d2.svg" 
+              alt="R2-D2" 
+              className="w-full h-full"
+            />
+            <div className="absolute top-1/4 left-1/2 transform -translate-x-1/2 w-4 h-4 rounded-full bg-blue-400 main-eye"></div>
+          </div>
+          
+          <VisualizerCanvas 
+            ref={canvasRef} 
+            className="w-full h-40 rounded-lg bg-gray-900"
           />
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        {/* Middle Column - Message Input and Controls */}
+        <div className="flex flex-col space-y-4">
+          <div>
+            <label htmlFor="message" className="block text-sm font-medium text-gray-300 mb-2">
+              Message
+            </label>
+            <textarea
+              id="message"
+              rows={4}
+              className="droid-input"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="Enter your droid message here..."
+            />
+          </div>
+          
           <SliderControl
             label="Volume"
             value={volume}
-            min={0}
-            max={1}
+            min={0.1}
+            max={1.0}
             step={0.1}
             onChange={setVolume}
           />
@@ -1924,16 +1376,37 @@ const GGRoidMessenger: React.FC = () => {
           <SliderControl
             label="Duty Cycle"
             value={dutyCycle}
-            min={0.3}
-            max={0.7}
-            step={0.05}
+            min={0.1}
+            max={0.9}
+            step={0.1}
             onChange={setDutyCycle}
           />
           
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              id="personalityToggle"
+              className="h-4 w-4 rounded border-gray-700 text-blue-600 focus:ring-blue-500"
+              checked={addPersonality}
+              onChange={(e) => setAddPersonality(e.target.checked)}
+            />
+            <label htmlFor="personalityToggle" className="text-sm text-gray-300">
+              Add R2-D2 Personality
+            </label>
+          </div>
+        </div>
+        
+        {/* Right Column - Sound Effects and Send Button */}
+        <div className="flex flex-col space-y-4">
+          <SoundEffectSelect
+            value={selectedEffect}
+            onChange={setSelectedEffect}
+          />
+          
           <SliderControl
-            label="Warble Rate (Hz)"
+            label="LFO Rate"
             value={lfoRate}
-            min={5}
+            min={1}
             max={20}
             step={1}
             onChange={setLfoRate}
@@ -1942,90 +1415,26 @@ const GGRoidMessenger: React.FC = () => {
           <SliderControl
             label="Exaggeration"
             value={exaggeration}
-            min={0}
+            min={0.1}
             max={1}
             step={0.1}
             onChange={setExaggeration}
           />
-        </div>
-        
-        <div className="flex flex-col md:flex-row gap-6 mb-6">
-          <div className="flex-grow">
-            <SoundEffectSelect 
-              value={selectedEffect}
-              onChange={setSelectedEffect}
-            />
-          </div>
           
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="personalityToggle"
-              checked={addPersonality}
-              onChange={(e) => setAddPersonality(e.target.checked)}
-              className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
-            />
-            <label htmlFor="personalityToggle" className="text-white">
-              Add Droid Personality
-            </label>
-          </div>
-        </div>
-        
-        <div className="flex flex-wrap gap-4">
-          <DroidButton 
-            onClick={() => sendMessage("Test... test... test...")}
-            variant="secondary"
-          >
-            Test Sound
-          </DroidButton>
-          
-          <DroidButton 
-            onClick={() => sendMessage()}
+          <DroidButton
             variant="primary"
+            className="mt-4"
+            onClick={() => sendMessage()}
           >
             Send Message
           </DroidButton>
           
-          <DroidButton 
-            onClick={saveAsWav}
-            variant="outline"
-          >
-            Save as WAV
-          </DroidButton>
-        </div>
-      </div>
-      
-      {/* Visualization and R2-D2 */}
-      <div className="lg:col-span-1 flex flex-col gap-6">
-        <div className="bg-gray-800 rounded-xl p-6 shadow-lg">
-          <h2 className="text-2xl font-bold text-blue-400 mb-4">Visualization</h2>
-          
-          <div className="h-[200px] bg-gray-900 rounded-lg relative overflow-hidden">
-            <VisualizerCanvas ref={canvasRef} className="w-full h-full" />
-          </div>
-          
-          <div className="flex justify-center mt-4">
-            <div className="w-32 h-32 relative">
-              <div className="absolute inset-0 flex items-center justify-center">
-                <Image 
-                  src="/r2d2.svg" 
-                  alt="R2-D2" 
-                  width={120} 
-                  height={120}
-                  id="r2d2"
-                  className="transition-all duration-300"
-                />
-              </div>
+          {receivedMessage && (
+            <div className="mt-4 p-3 bg-gray-900 rounded-lg">
+              <h3 className="text-sm font-medium text-amber-400 mb-1">Received Message:</h3>
+              <p className="text-gray-300">{receivedMessage}</p>
             </div>
-          </div>
-        </div>
-        
-        <div className="bg-gray-800 rounded-xl p-6 shadow-lg">
-          <h2 className="text-2xl font-bold text-blue-400 mb-4">Received Message</h2>
-          
-          <div className="bg-gray-900 rounded-lg p-4 min-h-[100px] text-white">
-            {receivedMessage || "No messages received yet."}
-          </div>
+          )}
         </div>
       </div>
     </div>
