@@ -1,6 +1,5 @@
-# Serve the app at root path
-/* /index.html 200
+# Handle SPA routing - use 200 rewrite instead of redirect
+/*  /index.html  200
 
-# Handle SPA routing
-/ggroid/* /index.html 200
-/ggraid/* /index.html 200
+# Prevent infinite loops by excluding index.html from the redirect
+/index.html  /index.html  200
