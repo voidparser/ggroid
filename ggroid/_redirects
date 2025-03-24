@@ -1,5 +1,11 @@
-# Handle SPA routing - use 200 rewrite instead of redirect
-/*  /index.html  200
+# Root path to /ggroid
+/  /ggroid/  301
+
+# Handle SPA routing within /ggroid
+/ggroid/*  /ggroid/index.html  200
 
 # Prevent infinite loops by excluding index.html from the redirect
-/index.html  /index.html  200
+/ggroid/index.html  /ggroid/index.html  200
+
+# Fallback for any other path
+/*  /ggroid/index.html  200

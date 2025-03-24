@@ -3,6 +3,11 @@
   Cross-Origin-Embedder-Policy: require-corp
   Cross-Origin-Opener-Policy: same-origin
 
+# Headers for main app routes
+/ggroid/*
+  Cross-Origin-Embedder-Policy: require-corp
+  Cross-Origin-Opener-Policy: same-origin
+
 # Headers for WASM files
-/ggwave/*
+/ggroid/ggwave/*
   Content-Type: application/wasm

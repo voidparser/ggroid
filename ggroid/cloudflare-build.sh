@@ -9,13 +9,13 @@ npm run build
 
 echo "Setting up Cloudflare Pages specifics..."
 
-# Create dist directory if it doesn't exist (unlikely but just in case)
-mkdir -p ./dist
-
 # Ensure _redirects is in the output
 if [ ! -f ./dist/_redirects ]; then
   echo "Adding _redirects file to output dir..."
-  cp ./public/_redirects ./dist/ 2>/dev/null || echo "/* /index.html 200" > ./dist/_redirects
+  cp ./public/_redirects ./dist/ 2>/dev/null || echo "/ /ggroid/ 301
+/ggroid/* /ggroid/index.html 200
+/ggroid/index.html /ggroid/index.html 200
+/* /ggroid/index.html 200" > ./dist/_redirects
 fi
 
 # Copy special headers file if it exists
@@ -27,12 +27,16 @@ fi
 # Make sure WASM assets are copied
 if [ -d ./public/ggwave ]; then
   echo "Ensuring WASM files are in output dir..."
-  mkdir -p ./dist/ggwave
-  cp -r ./public/ggwave/* ./dist/ggwave/
+  
+  # Check if ggwave directory exists in dist, if not create it
+  if [ ! -d ./dist/ggwave ]; then
+    mkdir -p ./dist/ggwave
+    cp -r ./public/ggwave/* ./dist/ggwave/
+  fi
   
   # Set proper MIME type for WASM files
   echo "Setting correct MIME type for WASM files in _headers..."
-  grep -q "/ggwave/" ./dist/_headers || echo -e "\n# Headers for WASM files\n/ggwave/*\n  Content-Type: application/wasm" >> ./dist/_headers
+  grep -q "/ggroid/ggwave/" ./dist/_headers || echo -e "\n# Headers for WASM files\n/ggroid/ggwave/*\n  Content-Type: application/wasm" >> ./dist/_headers
 fi
 
 echo "Build complete! Output ready in ./dist directory"

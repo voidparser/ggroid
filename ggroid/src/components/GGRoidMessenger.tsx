@@ -66,8 +66,12 @@ const GGRoidMessenger: React.FC = () => {
         return Promise.resolve();
       }
       
-      // Check if script is already in DOM
-      const existingScript = document.querySelector('script[src="/ggwave/ggwave.js"]');
+      // Get the base URL for the application
+      const basePath = import.meta.env.BASE_URL || '/ggroid/';
+      const ggwaveScriptPath = `${basePath}ggwave/ggwave.js`;
+      
+      // Check if script is already in DOM (using dynamic path)
+      const existingScript = document.querySelector(`script[src="${ggwaveScriptPath}"]`);
       if (existingScript) {
         console.log('GGWave script already in DOM, checking if it loaded properly');
         
@@ -87,7 +91,7 @@ const GGRoidMessenger: React.FC = () => {
       // Try loading with defer instead of async to ensure proper loading order
       return new Promise<void>((resolve, reject) => {
         const script = document.createElement('script');
-        script.src = '/ggwave/ggwave.js';
+        script.src = ggwaveScriptPath;
         script.defer = true; // Use defer instead of async for more reliable loading
         
         // Set a timeout to detect stalled script loading
@@ -215,8 +219,11 @@ const GGRoidMessenger: React.FC = () => {
             // Try reloading the script as a last resort
             console.log('Attempting to reload GGWave script...');
             await new Promise<void>((resolve, reject) => {
+              const basePath = import.meta.env.BASE_URL || '/ggroid/';
+              const ggwaveScriptPath = `${basePath}ggwave/ggwave.js`;
+              
               const script = document.createElement('script');
-              script.src = '/ggwave/ggwave.js';
+              script.src = ggwaveScriptPath;
               script.async = true;
               script.onload = () => {
                 console.log('GGWave script reloaded');
@@ -559,13 +566,18 @@ const GGRoidMessenger: React.FC = () => {
       
       // Try different script loading approaches
       try {
+        // Get the base path and script path
+        const basePath = import.meta.env.BASE_URL || '/ggroid/';
+        const ggwaveScriptPath = `${basePath}ggwave/ggwave.js`;
+        
         // Remove any existing failed scripts to avoid conflicts
-        const existingScripts = document.querySelectorAll('script[src="/ggwave/ggwave.js"]');
+        const existingScripts = document.querySelectorAll(`script[src="${ggwaveScriptPath}"]`);
         existingScripts.forEach(script => script.remove());
         
         // Create a new script with defer (more reliable than async)
+        
         const scriptEl = document.createElement('script');
-        scriptEl.src = '/ggwave/ggwave.js';
+        scriptEl.src = ggwaveScriptPath;
         scriptEl.defer = true;
         
         // Wait for script to load with timeout
@@ -1335,7 +1347,7 @@ const GGRoidMessenger: React.FC = () => {
           <div className="relative w-48 h-48">
             <img 
               id="r2d2" 
-              src="/r2d2.svg" 
+              src={`${import.meta.env.BASE_URL || '/ggroid/'}r2d2.svg`} 
               alt="R2-D2" 
               className="w-full h-full"
             />

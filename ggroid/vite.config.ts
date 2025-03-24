@@ -4,6 +4,7 @@ import path from 'path';
 
 export default defineConfig({
   plugins: [react()],
+  base: '/ggroid/', // Set the base URL to /ggroid/
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src')
@@ -22,6 +23,7 @@ export default defineConfig({
   },
   server: {
     port: 3000,
-    open: true
+    open: true,
+    base: '/ggroid/' // Also set for development server
   }
 });

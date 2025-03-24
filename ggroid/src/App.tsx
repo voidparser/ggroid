@@ -1,6 +1,9 @@
 import GGRoidMessenger from './components/GGRoidMessenger'
 
 function App() {
+  // Helper to prefix all URLs with the base path
+  const basePath = import.meta.env.BASE_URL || '/ggroid/';
+  
   return (
     <div className="min-h-screen bg-gray-900 text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -28,13 +31,13 @@ function App() {
               GitHub
             </a>
             <a 
-              href="/examples" 
+              href={`${basePath}examples`}
               className="hover:text-yellow-400 transition"
             >
               Examples
             </a>
             <a 
-              href="/docs" 
+              href={`${basePath}docs`}
               className="hover:text-yellow-400 transition"
             >
               Documentation
