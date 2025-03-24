@@ -19,10 +19,10 @@ function App() {
         <GGRoidMessenger />
 
         <footer className="mt-16 text-center text-gray-400 text-sm">
-          <p>© GGRoid - Enhancing GGWave with Star Wars Droid Aesthetics</p>
+          <p>GGRoid - Enhancing GGWave with Star Wars Droid Aesthetics</p>
           <div className="flex justify-center gap-6 mt-4">
             <a 
-              href="https://github.com/yourusername/ggroid" 
+              href="https://github.com/voidparser/ggroid"
               target="_blank" 
               rel="noopener noreferrer"
               className="hover:text-yellow-400 transition"
