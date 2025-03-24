@@ -66,8 +66,9 @@ const GGRoidMessenger: React.FC = () => {
         return Promise.resolve();
       }
       
-      // Get the base URL for the application
-      const basePath = import.meta.env.BASE_URL || '/ggroid/';
+      // Get the base URL for the application - using the one injected by Vite
+      const basePath = import.meta.env.BASE_URL;
+      console.log("Using base path in Messenger:", basePath);
       const ggwaveScriptPath = `${basePath}ggwave/ggwave.js`;
       
       // Check if script is already in DOM (using dynamic path)
@@ -219,7 +220,8 @@ const GGRoidMessenger: React.FC = () => {
             // Try reloading the script as a last resort
             console.log('Attempting to reload GGWave script...');
             await new Promise<void>((resolve, reject) => {
-              const basePath = import.meta.env.BASE_URL || '/ggroid/';
+              const basePath = import.meta.env.BASE_URL;
+              console.log("Using base path in reload:", basePath);
               const ggwaveScriptPath = `${basePath}ggwave/ggwave.js`;
               
               const script = document.createElement('script');
@@ -567,7 +569,8 @@ const GGRoidMessenger: React.FC = () => {
       // Try different script loading approaches
       try {
         // Get the base path and script path
-        const basePath = import.meta.env.BASE_URL || '/ggroid/';
+        const basePath = import.meta.env.BASE_URL;
+        console.log("Using base path in send:", basePath);
         const ggwaveScriptPath = `${basePath}ggwave/ggwave.js`;
         
         // Remove any existing failed scripts to avoid conflicts
@@ -1347,7 +1350,7 @@ const GGRoidMessenger: React.FC = () => {
           <div className="relative w-48 h-48">
             <img 
               id="r2d2" 
-              src={`${import.meta.env.BASE_URL || '/ggroid/'}r2d2.svg`} 
+              src={`${import.meta.env.BASE_URL}r2d2.svg`} 
               alt="R2-D2" 
               className="w-full h-full"
             />
